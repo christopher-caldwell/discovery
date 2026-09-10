@@ -221,7 +221,7 @@ Second-session counters: 1,282,614 cumulative input tokens (1,198,848 cached),
 remain a proportionality concern even though each produced a concrete finding.
 
 
-## Current stopping point and rendering repair
+## Previous stopping point and rendering repair
 
 EXP-006/A-094 passed 27 tests, including the full accepted-path matrix. D-004 and its
 empirical proof extend the proposal with explicit Path-only absolute filesystem
@@ -233,7 +233,7 @@ support; no recapture was needed.
 The third independent session, `phase4-review-3`, stopped after 106.852 seconds with
 an account usage-limit error. It did not finish a review or deliver an outcome.
 No usage counters were returned. All twelve categories for the newest draft remain
-incomplete. **The run is active in Phase 4; it is not finalized.** No further model
+incomplete. **At that checkpoint the run was active in Phase 4, not finalized.** No further model
 retry or usage-credit redemption was attempted. An evaluator-authored interruption
 note is kept separately in the session control directory.
 
@@ -264,7 +264,7 @@ retained exact commands and command-sensitive structure hashes.
 
 Remaining process work includes cross-category canonical findings without duplicate
 defect records, numeric conclusion-confidence semantics, proportional investigation
-cost, and a completed independent review of SPEC-003. This campaign supplies
+cost, and completion of the independent review of SPEC-003 (subsequently recorded below). This campaign supplies
 concrete findings and repairs, not a claim that every scenario is proven.
 
 
@@ -275,3 +275,64 @@ Ruff lint and formatting checks passed. Version remains 0.2.0 and schema remains
 Raw evaluator fixtures, logs and ledgers are not committed; source, regression tests
 and this analysis are retained in the repository. The pending independent review
 can resume from the selected run without replaying either earlier model session.
+
+
+## Resumed independent review
+
+After the user requested continuation, `phase4-review-4` resumed only the selected
+ledger, source and immutable ticket in another fresh isolated model session. The
+starting audit remained valid at 259 events; SPEC-003 was still a draft in Phase 4
+revision 3 with all twelve current-draft challenges incomplete. The reviewer uses
+the configured gpt-5.6-terra/xhigh model and the same 600-second bound. This attempt
+includes the current CLI changes but preserves the exact previously authored draft;
+it does not turn the separately rendered preview into reviewed evidence.
+
+
+## Completed continuation: final proposal with scoped assurance
+
+`phase4-review-4` completed in 385.569 seconds with exit 0 and no timeout. It initialized
+CH-025–CH-036 against SPEC-003, completed all twelve categories with substantive
+`completed_no_finding` reports, and finalized through the ordinary Phase 4 gate.
+The final revision is SPEC-004 (`fd2f5fba-386b-4af6-818f-471c260c0bf5`). No new
+material defect was found within the stated ticket scope. The prior schema and
+filename findings remain in history, resolved through the recorded repairs.
+
+The reviewer inspected the full A-094 receipt and explicitly distinguished its
+old-bug characterization from assertions about the repaired facade. It did not
+claim that the special-path matrix was concurrent, that simulated version rejection
+proved old-runtime compatibility, or that local tests established power-loss,
+physical filesystem-fault, deployment or load behavior. These limits remain in the
+final proposal and twelve reports. The procedural assurance score is 100; numeric
+confidence in correctness remains a separate unresolved product concern.
+
+Final audit: 273 events, no failures or orphan artifacts, head
+`40771e53272dc41bbaa0732e92f5dcfb0f2ad7d4c3289eaf7f9b02cb41a69913`.
+Selected source/ticket and frozen runtime/skill hashes were unchanged; temporary
+auth was removed. All four exported files were checked against their immutable
+artifacts and recorded hashes. The final technical Markdown is 110,908 bytes, using
+the new renderer while preserving complete machine records. Its larger size than
+the 101,902-byte preview includes the final challenge records and assurance data.
+
+The final export directory is:
+
+```text
+.discovery/scenario-campaign/runs/scoped-storage-1/work/run/exports/fd2f5fba-386b-4af6-818f-471c260c0bf5/
+```
+
+It contains `technical-spec.md`, `discovery-summary.md`, `evidence-manifest.json`
+and `handoff.json`. The fresh model outcome and category reports are under
+`sessions/phase4-review-4/work/`; control manifests, isolation checks and usage
+remain separately retained.
+
+Session counters: 1,818,844 cumulative input tokens, including 1,711,360 cached, and
+18,842 output tokens. These counters are not evidence that the rendering change
+reduced model usage: the reviewer still received the older exact draft and inspected
+full receipts. Resource proportionality remains open. No source change was made
+in response to this continuation; it supplied the missing independent review and
+finalization evidence for the existing repair. The preceding 129-test verification
+still describes the unchanged implementation.
+
+This exercise now demonstrates an informed proposal reaching Phase 4, two semantic
+findings causing 4→3 regressions, new empirical proof for each repair, and successful
+forward traversal through a fresh review and final export. It does not establish
+that every scenario works or that generic checklist completion proves correctness.

@@ -107,7 +107,28 @@ they do not establish general reliability or close every scenario.
 The second fresh Phase 4 review found a distinct filename-interpretation defect;
 after empirical reproduction and repair the run retraversed into Phase 4 again.
 The third review was interrupted by a usage limit before completing any current-draft
-category. Finalization therefore remains unobserved for this repaired proposal.
+category. Finalization was therefore still unobserved at that checkpoint.
 S19 also produced a source rendering change: the same-snapshot Markdown comparison
 shrunk by 60.8%, retained exact machine records, and labeled rejected requirements.
 This does not demonstrate reduced model cost or supply a numeric confidence score.
+
+
+## Completed selected-run continuation
+
+The next fresh session (`phase4-review-4`) completed all twelve current-draft
+categories, found no new material defect within the proposal's stated scope, and
+finalized SPEC-004 through the ordinary gate. S11/S13/S14 now have model-run evidence
+of a scoped feature proposal, semantic challenge, two 4→3 regressions with new proof,
+and forward traversal to final export. This was an informed repair campaign,
+not an independent cold end-to-end run.
+
+S19 includes a final package whose evidence limits survived review and whose
+Markdown labels rejected requirements and references full execution records. The
+score 100 remains procedural assurance, not conclusion-confidence calibration.
+S20 remains open: this continuation took 385.569 seconds and reported 1,818,844
+cumulative input tokens (1,711,360 cached), plus 18,842 output tokens. The latest
+review does not establish a model-cost benefit from the renderer change.
+
+Final audit: 273 events, valid with no orphan artifacts. Target source and ticket
+hashes were unchanged. Details and export location are in
+[the completed continuation report](phase4-retry.md#completed-continuation-final-proposal-with-scoped-assurance).
