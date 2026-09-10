@@ -613,3 +613,64 @@ def test_killed_cli_reservation_recovers_without_duplicate_execution(designed):
                 os.killpg(worker_pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Seatbelt execution adapter")
+def test_command_file_captures_bytes_and_preserves_replay(designed):
+    from discovery.domain.encoding import uid
+
+    env = designed
+    call = env["call"]
+    exp = plan_experiment(env)
+    command_file = env["root"].parent / "command with spaces.json"
+    payload = "quotes '\"; dollars $(not_a_command); backticks `unchanged`\nsecond line"
+    code = f"from pathlib import Path; Path('once.txt').write_text({payload!r})"
+    original = json.dumps(["/usr/bin/python3", "-c", code])
+    command_file.write_text(original)
+    request = uid()
+    result = call(
+        "experiment", "exec", exp["ref"], "--command-file", str(command_file), request=request
+    )["result"]
+    assert result["exit_code"] == 0
+    record = call("experiment", "list")["result"][-1]
+    from pathlib import Path
+
+    generated = Path(record["sandbox_path"]) / "once.txt"
+    assert generated.read_text() == payload
+    generated.write_text("replay must not execute")
+    assert call("experiment", "exec", exp["ref"], "--command", original, request=request)[
+        "replayed"
+    ]
+    assert generated.read_text() == "replay must not execute"
+    command_file.write_text(json.dumps(["/usr/bin/python3", "-c", 'print("changed")']))
+    assert (
+        call(
+            "experiment",
+            "exec",
+            exp["ref"],
+            "--command-file",
+            str(command_file),
+            request=request,
+            expected=2,
+        )["error"]["code"]
+        == "IDEMPOTENCY_CONFLICT"
+    )
+    assert call("audit", "verify")["result"]["valid"]
+
+
+@pytest.mark.parametrize("content", [b"not json", b"{}", b'[""]', b'["echo", "\\u0000"]', b"\xff"])
+def test_invalid_command_file_never_reserves_attempt(designed, content):
+    env = designed
+    call = env["call"]
+    exp = plan_experiment(env)
+    path = env["root"].parent / "invalid.json"
+    path.write_bytes(content)
+    before = call("audit", "verify")["result"]["event_count"]
+    assert (
+        call("experiment", "exec", exp["ref"], "--command-file", str(path), expected=2)["error"][
+            "code"
+        ]
+        == "INVALID_ARGUMENT"
+    )
+    assert call("experiment", "list")["result"][-1]["experiment_status"] == "planned"
+    assert call("audit", "verify")["result"]["event_count"] == before

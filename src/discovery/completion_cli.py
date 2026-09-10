@@ -78,7 +78,11 @@ def arguments(cmd, name, text):
         for k in ("decision", "name", "hypothesis", "procedure"):
             option(k)
     if name == "experiment.exec":
-        option("command", dest="command_json")
+        command = cmd.add_mutually_exclusive_group(required=True)
+        command.add_argument("--command", dest="command_json", type=text)
+        command.add_argument(
+            "--command-file", type=text, help="UTF-8 file containing a JSON argv array."
+        )
         cmd.add_argument("--timeout", type=int, default=60)
     if name == "experiment.replace":
         option("replacement")

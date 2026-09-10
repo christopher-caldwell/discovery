@@ -39,6 +39,22 @@ and registers a result artifact. No shell is implicit. The copy includes the
 baseline's dirty/untracked files and excludes its frozen generated directories.
 Copies with symlinks fail closed and require an explicitly prepared safe fixture.
 
+Use `--command-file /absolute/command.json` instead of `--command` for multiline
+probes. The UTF-8 file contains a JSON argv array; exactly one input is required.
+The CLI reads it before reservation and captures the resolved command in its
+receipt. Retain the file unchanged for retries; changed input with the same request
+is an idempotency conflict. The filename itself is not part of logical identity.
+Missing files fail before reservation; malformed JSON, empty executable names,
+NUL arguments and invalid UTF-8 are rejected before an attempt starts.
+
+The skill's `scripts/prepare_experiment.py --script probe.py --output command.json`
+embeds a readable Python script into argv without shell interpolation. It only
+prepares the command file. The eventual sandbox loader preserves cwd, writes the
+script under its original basename with exclusive creation, and runs it with
+`runpy`; child imports can use the same module. An existing filename is never
+overwritten. For scripts already in the source baseline, use ordinary argv
+pointing to their relative path instead.
+
 The current executor requires macOS `sandbox-exec`. It permits filesystem reads,
 confines writes to the disposable copy, denies networking, and supplies a minimal
 environment without inherited credentials. It is not credential-read isolation

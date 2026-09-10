@@ -121,14 +121,24 @@ def execute(root: Path, data: dict, request: str, actor: dict, session: str) -> 
 
     Replay never reruns the process. A missing receipt requires explicit abort/replacement.
     """
+    data = dict(data)
+    command_file = data.pop("command_file", None)
+    if command_file is not None:
+        try:
+            data["command_json"] = Path(command_file).read_text(encoding="utf-8")
+        except UnicodeError:
+            require(False, "INVALID_ARGUMENT", "--command-file must contain UTF-8 JSON.")
     try:
         argv = json.loads(data["command_json"])
     except (ValueError, TypeError):
         argv = None
     require(
-        isinstance(argv, list) and argv and all(isinstance(a, str) for a in argv),
+        isinstance(argv, list)
+        and argv
+        and all(isinstance(a, str) and "\x00" not in a for a in argv)
+        and argv[0],
         "INVALID_ARGUMENT",
-        "--command requires a JSON array of strings.",
+        "Command requires a JSON string array with a nonempty executable and no NUL bytes.",
     )
     require(1 <= data["timeout"] <= 600, "INVALID_ARGUMENT", "Timeout must be 1–600 seconds.")
     data = {**data, "command": argv}

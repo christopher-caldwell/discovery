@@ -134,3 +134,19 @@ Final audit passed with 178 events, zero integrity failures and six retained orp
 artifacts. Twelve final category reviews include performance unavailable; coverage
 is 92, not a correctness probability. No implementation changed, so the existing
 88-test result was not rerun solely for documentation. Release remains 0.2.0.
+
+
+## Readable experiments and first real-project investigation
+
+The suite now passes **95 tests**. New checks cover command-file UTF-8/JSON
+validation before reservation, literal quoting/multiline arguments, replay across
+inline/file inputs, changed-input conflicts, and the script helper's child-module
+imports and refusal to overwrite project files. Ruff, skill/plugin validation
+and wheel/source builds passed. Installed direct/cache skill resources match.
+Version remains 0.2.0, schema 5.
+
+[The Boilerman investigation](real-project-evaluation.md) reproduced real
+integration failures despite 41 passing helper tests, with a separate gofmt
+rejection for diagnostic generated output. The real Discovery run has 20 valid
+audit events and stops on two genuine contract questions. This is meaningful
+real-code evidence, not another seeded synthetic defect or a forced full traversal.

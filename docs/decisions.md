@@ -154,3 +154,17 @@ A real SIGKILL test now interrupts the CLI after its child starts. Retrying the
 same request preserves the single execution and reports interruption. Controller
 death can leave the child running, so recovery instructions require inspection
 and cleanup before abort/replacement. No release or schema bump is needed.
+
+
+## 016 — File-based experiment input and evidence review guidance
+
+The full evaluation lost attempts to inline quoting and accepted inadequate
+assertions as proof. `experiment exec --command-file` reads UTF-8 JSON argv before
+reservation; the resolved bytes retain normal request identity and receipt
+capture. Existing inline commands remain compatible. A skill helper prepares
+readable Python probes without executing them or overwriting project filenames.
+
+The skill now asks reviewers to map claims to actual assertions/observations and
+record category-specific adversarial work. These are semantic review guidance,
+not a purported automatic proof checker or new schema gate. No release/schema
+bump is required for this additive input path.
