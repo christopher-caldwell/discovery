@@ -40,6 +40,10 @@ def phase_violations(state: dict) -> list[dict]:
     for a in state["assumption"]:
         if a["impact"] == "critical" and a["assumption_status"] == "active":
             fail("CRITICAL_ASSUMPTION", a["assumption_text"])
+    # Finalization emits a new immutable specification. Its reviewed draft's
+    # checklist must not be interpreted as missing work on a closed run.
+    if state["run"]["run_status"] != "active":
+        return failures
     if phase == 2:
         return failures + phase_two_violations(state)
     if phase == 3:

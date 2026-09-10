@@ -33,3 +33,38 @@ def test_output_limit_stops_noisy_process_without_log_files(tmp_path, stream):
     output = result["stdout" if stream == 1 else "stderr"]
     assert output["truncated"] and output["captured_bytes"] == 2_000_000
     assert not (tmp_path / "stdout.log").exists() and not (tmp_path / "stderr.log").exists()
+
+
+def test_sandbox_can_terminate_own_child(tmp_path):
+    code = """import subprocess, signal
+child = subprocess.Popen(['/usr/bin/python3', '-c', 'import time; time.sleep(20)'])
+child.terminate()
+assert child.wait(timeout=3) == -signal.SIGTERM
+print('child terminated')
+"""
+    result = execute(tmp_path, ["/usr/bin/python3", "-c", code], 8)
+    assert result["exit_code"] == 0, result["stderr"]
+    assert "child terminated" in result["stdout"]["text"]
+    assert not result["timed_out"]
+
+
+def test_sandbox_cannot_signal_unrelated_owned_process(tmp_path):
+    import subprocess
+
+    unrelated = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(20)"])
+    try:
+        code = f"""import os, signal
+try:
+    os.kill({unrelated.pid}, signal.SIGTERM)
+except PermissionError:
+    print('unrelated signal denied')
+else:
+    raise AssertionError('sandbox signalled unrelated process')
+"""
+        result = execute(tmp_path, ["/usr/bin/python3", "-c", code], 8)
+        assert result["exit_code"] == 0, result["stderr"]
+        assert "unrelated signal denied" in result["stdout"]["text"]
+        assert unrelated.poll() is None
+    finally:
+        unrelated.kill()
+        unrelated.wait(timeout=5)

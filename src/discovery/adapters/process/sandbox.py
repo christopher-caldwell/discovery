@@ -56,7 +56,7 @@ def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
     # OS runtimes require broad read access; this is not credential-read isolation.
     profile = (
         "(version 1)(deny default)(allow process*)(allow sysctl-read)"
-        "(allow mach-lookup)(allow file-read*)"
+        "(allow mach-lookup)(allow file-read*)(allow signal (target children))"
     )
     profile += "(allow file-read-metadata)(allow file-write* (subpath " + quote(str(sandbox)) + "))"
     profile += '(allow file-write-data (literal "/dev/null"))'
@@ -144,5 +144,6 @@ def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
         "stderr": output("stderr"),
         "before_tree": before,
         "after_tree": baseline(sandbox, sandbox / "__no_run__", set())["baseline_tree_hash"],
+        "sandbox_profile": profile,
         "isolation": "macOS Seatbelt; network denied; writes only to disposable copy",
     }

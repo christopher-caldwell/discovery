@@ -168,3 +168,20 @@ The skill now asks reviewers to map claims to actual assertions/observations and
 record category-specific adversarial work. These are semantic review guidance,
 not a purported automatic proof checker or new schema gate. No release/schema
 bump is required for this additive input path.
+
+
+## 017 — Child-only signalling discovered by real test-runner execution
+
+The full Boilerman experiment returned exit 0 and 41 passing tests, but its nested
+Vitest stderr reported EPERM and a timeout terminating the fork worker. The outer
+process's success did not establish clean runtime behavior. The sandbox now adds
+`(allow signal (target children))`, following the restricted rule also present in
+the host's Apple-provided `/System/Library/Sandbox/Profiles/darwin-container-base.sb`
+and `com.apple.WindowServer.sb`. It does not grant unrestricted signal permission.
+
+Actual subprocess tests verify own-child termination and denial of signalling an
+unrelated test-owned process. Existing network/write-boundary tests still pass.
+New receipts include the exact `sandbox_profile` so policy changes remain visible
+while release 0.2.0 is still being developed. A repeated real Boilerman experiment
+then ran 41 tests without worker-cleanup stderr. The earlier receipt is retained
+and classified inconclusive, rather than rewritten as success.

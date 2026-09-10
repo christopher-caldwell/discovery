@@ -143,6 +143,12 @@ def test_complete_traversal_exports_and_final_replay(designed):
     )
     assert call("audit", "verify")["result"]["valid"]
     assert call("resume")["result"]["status"] == "finalized"
+    for gate in (
+        call("phase", "check")["result"],
+        call("status")["result"]["gate"],
+    ):
+        assert not gate["can_advance"]
+        assert [v["code"] for v in gate["violations"]] == ["RUN_NOT_ACTIVE"]
     assert result["spec"]["assurance"]["overall"] == 100
 
 

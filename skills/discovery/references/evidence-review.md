@@ -3,7 +3,7 @@
 Read this when accepting empirical proof or completing adversarial checks. The
 CLI validates references and procedural gates; it cannot determine whether a
 report's prose is true. A confidence score or clean process exit cannot supply
-missing observations.
+missing observations. Inspect nested tool results as well as the outer process: a wrapper may exit successfully while a test runner reports worker-cleanup errors or other failures in an embedded stderr field.
 
 ## Empirical review
 
@@ -11,6 +11,8 @@ For each material conclusion, identify the immutable receipt/script, relevant
 case, actual assertion, observed result, and scope limitation. A short table in
 the verification report is sufficient. Follow the code to confirm that the
 assertion checks the claimed state before a reset or another test changes it.
+Resolve non-system runtime executables to verified absolute file paths before preparing the command. The sandbox uses a minimal PATH; host-shell success does not prove the executable will be found there. Keep scratch paths under the sandbox cwd.
+
 Printed expected values, tautological assertions and expected-failure test suite
 exit codes are not proof of repaired behavior.
 

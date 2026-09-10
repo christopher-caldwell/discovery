@@ -57,12 +57,15 @@ pointing to their relative path instead.
 
 The current executor requires macOS `sandbox-exec`. It permits filesystem reads,
 confines writes to the disposable copy, denies networking, and supplies a minimal
-environment without inherited credentials. It is not credential-read isolation
+environment without inherited credentials. It permits a process to signal its own
+children so test runners can clean up their workers; unrelated process signalling
+remains denied. It is not credential-read isolation
 or a virtual machine. There is no unsandboxed fallback. This prevents commands
 from editing the original tree or contacting production databases; local copied
 SQLite files can be exercised within the sandbox.
 
-A result records command, environment, source identity, before/after tree hashes,
+A result records command, environment, source identity, the exact sandbox policy
+(`sandbox_profile` on new receipts), before/after tree hashes,
 stdout/stderr, exit code, timeout, and execution times. Capture uses bounded
 pipes, preserving existing project log files. Exceeding 2,000,000 bytes on either
 stream stops the process group and records `output_limited: true`, explicit
