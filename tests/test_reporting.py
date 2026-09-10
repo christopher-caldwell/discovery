@@ -13,7 +13,13 @@ def test_blocked_report_preserves_questions_without_advancement_or_scoring(run):
     folder = Path(result["directory"])
     packet = json.loads((folder / "report.json").read_text())
     text = (folder / "report.md").read_text()
-    assert packet["gate"] == gate
+    assert packet["gate"] == {k: v for k, v in gate.items() if k != "reporting"}
+    assert not gate["can_advance"]
+    for status in (gate, call("status")["result"], call("resume")["result"]):
+        assert status["reporting"]["available"]
+        assert status["reporting"]["command"] == "report export"
+        assert not status["reporting"]["requires_phase_completion"]
+        assert not status["reporting"]["finalizes_run"]
     assert not packet["is_final_specification"]
     assert packet["confidence"]["score"] is None
     assert packet["confidence"]["status"] == "not_assessed"

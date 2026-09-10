@@ -140,7 +140,8 @@ def write(
         require(
             surface["phase_revision_id"] == revision and surface["research_lane_id"] is None,
             "WRONG_PHASE",
-            "This slice records current Phase 1 surface discovery only.",
+            "Phase 1 requires a current planning surface from surface list "
+            "(research_lane_id is null). Lane surfaces are researched in Phase 2.",
         )
         sid = surface["research_surface_id"]
         if name == "research.record":

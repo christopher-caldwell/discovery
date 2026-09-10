@@ -26,9 +26,13 @@ def text(value: str) -> str:
 
 
 def confidence(value: str) -> float:
-    number = float(value)
+    message = "Confidence must be a number between 0 and 1, for example 0.8."
+    try:
+        number = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(message) from exc
     if not math.isfinite(number) or not 0 <= number <= 1:
-        raise argparse.ArgumentTypeError("Confidence must be between 0 and 1.")
+        raise argparse.ArgumentTypeError(message)
     return number
 
 
@@ -89,6 +93,11 @@ def parser() -> Parser:
             if name == "research.list":
                 name = "activity.list"
             cmd.set_defaults(command=name)
+            if name == "report.export":
+                cmd.description = (
+                    "Export an interim report in any phase, including with unmet gates. "
+                    "Records observations and limitations without finalizing the run."
+                )
             phase2_arguments(cmd, name)
             completion_arguments(cmd, name, text)
             agent_arguments(cmd, name, text)
@@ -110,7 +119,13 @@ def parser() -> Parser:
                     help="Phase 2 technical uncertainty; intent ambiguity requires regression.",
                 )
                 cmd.add_argument("--authority", required=True, type=text)
-                cmd.add_argument("--authority-confidence", required=True, type=confidence)
+                cmd.add_argument(
+                    "--authority-confidence",
+                    required=True,
+                    type=confidence,
+                    metavar="0..1",
+                    help="Numeric confidence in the proposed respondent's authority, e.g. 0.8.",
+                )
             if name in ("need.create", "lane.create"):
                 cmd.add_argument(
                     "--impact", required=True, choices=["contextual", "material", "critical"]
@@ -119,10 +134,23 @@ def parser() -> Parser:
                 cmd.add_argument("--scope", required=True, type=text)
                 cmd.add_argument("--need", dest="needs", action="append", required=True, type=text)
                 cmd.add_argument(
-                    "--method", dest="methods", action="append", required=True, type=text
+                    "--method",
+                    dest="methods",
+                    action="append",
+                    required=True,
+                    type=text,
+                    help="One method name per flag; repeat --method for additional methods.",
                 )
                 cmd.add_argument(
-                    "--surface", dest="surfaces", action="append", required=True, type=text
+                    "--surface",
+                    dest="surfaces",
+                    action="append",
+                    required=True,
+                    type=text,
+                    help=(
+                        "One Phase 2 lane surface per flag; repeat --surface, "
+                        "not comma-separated names."
+                    ),
                 )
             if name in (
                 "question.resolve",
@@ -130,7 +158,16 @@ def parser() -> Parser:
                 "research.record",
                 "lane.depends-on",
             ):
-                cmd.add_argument("ref", type=text)
+                cmd.add_argument(
+                    "ref",
+                    type=text,
+                    help=(
+                        "Surface reference (S-001), not a lane. In Phase 1 choose a current "
+                        "surface with research_lane_id null from surface list."
+                        if name in ("research.record", "surface.disposition")
+                        else None
+                    ),
+                )
             if name == "question.resolve":
                 cmd.add_argument("--answer", required=True, type=text)
             if name == "lane.depends-on":

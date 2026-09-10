@@ -47,6 +47,12 @@ than treating the ticket as authority. Before elaborating a blocked proposal, re
 checks and stopping boundaries. Keep small questions scoped; do not reduce impact
 or claim unfinished evidence review is complete to save effort.
 
+For an explanation-only request, capture the source-supported answer and its
+limits with `research record` on the relevant Phase 1 surfaces, then export the
+interim report once useful. Do not create an implementation plan or finish every
+planning surface merely to obtain an answer export. Unmet gates remain visible;
+this route does not mean formal research closure or a finalized specification.
+
 ## Command discipline
 
 Global options precede the command; `--json` also works at the end. Every mutation needs a request UUID and actor identity. Retain the exact request and inputs until the outcome is known. Retry a lost response or `SQLITE_BUSY` with the same UUID and logical input. A new action needs a new UUID. Stop retrying if the same contention repeats without progress; preserve the request for later. Do not retry an `IDEMPOTENCY_CONFLICT` as though it were transient.
@@ -79,6 +85,12 @@ Do not invent design work to obtain an export. The report remains explicitly int
 when formal evidence review is unfinished.
 
 Blocking is the default for questions. This release has no assumption/withdraw commands. Needs trace to the request artifact. Lanes must pose specific questions, link needs, and declare scope, impact, methods, and surfaces. Do not reduce impact to pass a gate.
+
+`question create --authority-confidence` takes a number from 0 to 1 describing
+the proposed respondent's authority, not confidence in the answer. Repeat lane
+`--surface` and `--method` flags for separate names. Research commands take a
+surface reference (`S-001`), not a lane reference: Phase 1 uses current planning
+surfaces with `research_lane_id: null`; lane surfaces are for Phase 2.
 
 Record actual searches with `research record`, including the query/procedure, result summary, origin URI, and immutable report file. When the recorded search completes the work, add `--complete-surface "reason"`
 to mark its surface searched in the same transaction. In Phase 2,

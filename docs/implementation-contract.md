@@ -103,3 +103,9 @@ structured snapshot. Artifact references still require the original run director
 Repeated exports of unchanged state are identical; observed source drift creates a
 distinct report even when the audit head is unchanged. Conflicting files and symlinks
 are rejected. `spec export` continues to require a compiled specification.
+
+`status`, `resume` and `phase check` explicitly expose interim reporting
+availability separately from advancement gates. An unmet phase gate does not
+prevent `report export`; the report preserves unfinished work and does not imply
+verified conclusions. This is an existing export capability made discoverable,
+not a separate answer-only completion state.

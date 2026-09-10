@@ -121,8 +121,20 @@ def query(
             return {"satisfied": not violations, "violations": violations}
         violations = phase_violations(snapshot)
         gate = {"can_advance": not violations, "violations": violations}
+        reporting = {
+            "command": "report export",
+            "available": True,
+            "kind": "interim",
+            "requires_phase_completion": False,
+            "finalizes_run": False,
+            "meaning": (
+                "Export recorded observations and limitations now, including for blocked or "
+                "explanation-only requests. Phase gates govern advancement, not this export; "
+                "the report retains unmet gates and does not imply verified conclusions."
+            ),
+        }
         if name == "phase.check":
-            return gate
+            return {**gate, "reporting": reporting}
         run = snapshot["run"]
         result = {
             "run_uuid": run["discovery_run_uuid"],
@@ -131,6 +143,7 @@ def query(
             "phase": snapshot["phase"],
             "source_baselines": snapshot["sources"],
             "gate": gate,
+            "reporting": reporting,
             "audit_head": audit["head_hash"],
         }
         if name == "status":

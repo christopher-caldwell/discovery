@@ -8,6 +8,13 @@ request in the target repository. Isolated temporary probes and experiments may
 substantiate a recommendation without becoming delivery of the requested feature.
 Evaluation-driven changes to Discovery itself are in scope.
 
+The [scenario specifications](evaluations/scenario-specs.md) turn this purpose
+into concrete inputs, expected observations, failure signals and evidence
+requirements. The [coverage ledger](evaluations/coverage-ledger.md) distinguishes
+structural checks from model behavior; the
+[isolated campaign](evaluations/isolated-campaign.md) records repeat runs and
+the implementation changes they motivate.
+
 ## Evaluate the process from outside
 
 Keep the evaluator's expected issues separate from the operator's ticket. Preserve

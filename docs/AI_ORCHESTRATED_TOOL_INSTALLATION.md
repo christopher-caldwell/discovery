@@ -45,7 +45,7 @@ personal plugin source:
   /Users/christophercaldwell/plugins/discovery
 
 installed plugin cache:
-  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910213201
+  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910220223
 
 plugin identifier:
   discovery@personal (installed and enabled)
@@ -66,8 +66,8 @@ skills/discovery/SKILL.md       metadata.version
 ```
 
 The current release is `0.2.0`; its SQLite schema is version `5`. Release version
-and schema version are different contracts. Existing schema versions other than
-3 are rejected, never reset. A local plugin cache suffix such as
+and schema version are different contracts. Schema 3/4 runs require explicit upgrade to schema 5; unsupported versions
+are rejected, never reset. A local plugin cache suffix such as
 `+codex.20260910162056` changes cache identity, not CLI or database semantics.
 
 `tests/test_installation.py` verifies the base-version invariant and installed
