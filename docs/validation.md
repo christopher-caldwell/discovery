@@ -122,3 +122,15 @@ The local report is `.discovery/outbox-cold-report.md`; the durable run is
 baseline, so resuming must inspect drift. This exercise validates honest blockers
 and useful findings, not four-phase semantic quality. Future checks should reuse
 this fixture or a real project rather than multiply synthetic environments.
+
+
+## Assisted full synthetic traversal
+
+[Full evaluation report](full-evaluation.md): all four phases finalized after
+three evidence-driven regressions. The final exact-schema sandbox probe passed
+five asserted cases including abrupt process exits and shared-worker contention.
+Root review corrected several model-authored proof overclaims before finalization.
+Final audit passed with 178 events, zero integrity failures and six retained orphan
+artifacts. Twelve final category reviews include performance unavailable; coverage
+is 92, not a correctness probability. No implementation changed, so the existing
+88-test result was not rerun solely for documentation. Release remains 0.2.0.
