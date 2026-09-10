@@ -87,6 +87,22 @@ def obligation_supported(state: dict, obligation: dict) -> bool:
     return passed or any(e["evidence_kind"] in ("primary", "empirical") for e in evidence)
 
 
+def decision_proof_violations(state: dict, decision_id: int) -> list[dict]:
+    failures = []
+    for o in state["proof_obligation"]:
+        if o["technical_decision_id"] != decision_id:
+            continue
+        if o["obligation_status"] == "not_applicable" and o["disposition_reason"].strip():
+            continue
+        if o["obligation_status"] != "satisfied" or not obligation_supported(state, o):
+            failures.append({"code": "PROOF_UNSATISFIED", "message": o["obligation_description"]})
+    for e in state["experiment"]:
+        if e["technical_decision_id"] == decision_id and not e["superseded_by_experiment_id"]:
+            if e["experiment_status"] != "passed" or e["execution_exit_code"] != 0:
+                failures.append({"code": "EXPERIMENT_INCOMPLETE", "message": e["experiment_name"]})
+    return failures
+
+
 def design_violations(state: dict, *, draft: bool = True) -> list[dict]:
     failures = phase_two_violations(state)
 
@@ -105,6 +121,10 @@ def design_violations(state: dict, *, draft: bool = True) -> list[dict]:
         did = d["technical_decision_id"]
         if d["decision_status"] == "proposed" and d["impact"] != "contextual":
             fail("DECISION_UNDECIDED", d["decision_statement"])
+            # Show already-recorded proof failures before acceptance. The undecided
+            # material decision already blocks advancement; acceptance must not be
+            # necessary merely to discover its outstanding proof work.
+            failures.extend(decision_proof_violations(state, did))
         if d["decision_status"] != "accepted":
             continue
         if (
@@ -126,15 +146,7 @@ def design_violations(state: dict, *, draft: bool = True) -> list[dict]:
         obligations = [o for o in state["proof_obligation"] if o["technical_decision_id"] == did]
         if d["impact"] != "contextual" and not obligations:
             fail("PROOF_REQUIRED", d["decision_statement"])
-        for o in obligations:
-            if o["obligation_status"] == "not_applicable" and o["disposition_reason"].strip():
-                continue
-            if o["obligation_status"] != "satisfied" or not obligation_supported(state, o):
-                fail("PROOF_UNSATISFIED", o["obligation_description"])
-        for e in state["experiment"]:
-            if e["technical_decision_id"] == did and not e["superseded_by_experiment_id"]:
-                if e["experiment_status"] != "passed" or e["execution_exit_code"] != 0:
-                    fail("EXPERIMENT_INCOMPLETE", e["experiment_name"])
+        failures.extend(decision_proof_violations(state, did))
         if not any(r["technical_decision_id"] == did for r in state["technical_requirement"]):
             fail("REQUIREMENT_TRACE_REQUIRED", d["decision_statement"])
     for need in state["research_need"]:

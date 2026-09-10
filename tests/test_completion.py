@@ -95,6 +95,48 @@ def draft(env):
     return env["call"]("spec", "draft", "--narrative", str(env["narrative"]))["result"]
 
 
+def test_proposed_material_decision_exposes_failed_proof_before_acceptance(designed):
+    call = designed["call"]
+    strategy = call("strategy", "list")["result"][0]["ref"]
+    decision = call(
+        "decision",
+        "create",
+        "--strategy",
+        strategy,
+        "--claim",
+        designed["claim"]["ref"],
+        "--text",
+        "Classify duplicate failures",
+        "--rationale",
+        "Candidate to review",
+        "--impact",
+        "material",
+    )["result"]["ref"]
+    obligation = call(
+        "obligation",
+        "create",
+        "--decision",
+        decision,
+        "--text",
+        "Existing state must not hide an unrelated constraint failure",
+        "--impact",
+        "material",
+        "--profile",
+        "primary",
+    )["result"]["ref"]
+    call("obligation", "fail", obligation, "--reason", "A counterexample contradicts the candidate")
+    gate = call("phase", "check")["result"]
+    assert not gate["can_advance"]
+    assert any(v["code"] == "DECISION_UNDECIDED" for v in gate["violations"])
+    expected = {
+        "code": "PROOF_UNSATISFIED",
+        "message": "Existing state must not hide an unrelated constraint failure",
+    }
+    assert expected in gate["violations"]
+    call("decision", "reject", decision, "--reason", "Discard the defeated candidate")
+    assert expected not in call("phase", "check")["result"]["violations"]
+
+
 def challenges(env):
     call = env["call"]
     checks = call("challenge", "initialize")["result"]["checks"]

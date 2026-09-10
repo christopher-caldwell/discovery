@@ -28,11 +28,20 @@ must not silently take ownership of that choice.
 
 ## Stop speculative design at the right boundary
 
-When an unanswered decision would change the API or persistence model, record the
-blocking question and the minimal alternatives needed to answer it. For example,
+When an unanswered product or authority decision would change the API or persistence
+model, record the blocking question and the minimal alternatives needed to answer it. For example,
 show the difference between ephemeral advice and a durable reviewed artifact;
 do not select storage tables before that distinction is resolved. Continue independent
 research that helps frame the question, but defer detail likely to be invalidated.
+
+Separate those human decisions from technical choices the request delegates to the
+proposal. An unspecified storage interface or transaction boundary is not automatically
+a Phase 1 blocker: research alternatives and propose a justified choice when the
+product scope permits it. Keep unavailable operational evidence explicit. On a reply,
+reassess each question: preserve unanswered product requirements, but record delegated
+design work as research needs rather than demanding that the owner supply the design.
+For a compound question, state which parts were answered and where the remaining
+parts are tracked; do not resolve the whole question with an invented answer.
 
 A Phase 1 report can substantiate why a premise is disputed without admitting a
 Phase 2 claim. Keep supported observations, inferences, alternatives and unknowns

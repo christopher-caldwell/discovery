@@ -45,7 +45,7 @@ personal plugin source:
   /Users/christophercaldwell/plugins/discovery
 
 installed plugin cache:
-  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910220223
+  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910223254
 
 plugin identifier:
   discovery@personal (installed and enabled)

@@ -61,3 +61,27 @@ Remaining work is not contingent on receiving a real customer ask. The next
 controlled feature, contradiction, recovery and challenge scenarios can still
 produce implementation evidence. This batch does not support a claim that
 Discovery cannot improve further without real-world use.
+
+
+## Feature and recovery follow-up
+
+See [feature-and-recovery.md](feature-and-recovery.md) for separate inputs, controls,
+results and limitations. This extends the preceding batch; it does not overwrite
+what was unexercised in that batch.
+
+| Observable | Updated evidence | Limit |
+| --- | --- | --- |
+| S04/S08 contradiction | A fresh model found the superseded global-ID rule and preserved current tenant-scoped identity | One deliberately constructed fixture |
+| S15 fresh recovery | A new session reconstructed the selected ledger, applied a simulated reply and preserved history; old conversation/outcome reads denied | Correct reconstruction did not prevent overblocking delegated design choices |
+| S06 research lanes | Fully scoped storage feature completed research with source-backed current-behavior claims and documented alternatives | Does not prove semantic completeness of research |
+| S11 proposal | Reached Phase 3 and exported an implementation direction without target changes | Error-classification flaw remains in the original interim proposal |
+| S12 experiment | Formal receipt truthfully records a nested-sandbox denial before execution | Host probe is separate; full experimental proof was not obtained |
+| S13 independent challenge | Fresh reviewer identified a masked constraint failure and a test that bypassed the proposed function | Review continuation in Phase 3, not a completed Phase 4 |
+| S14 regression/retraverse | Still not exercised by this model campaign | No Phase 4 checkpoint existed; no seeded regression was run |
+| S17 preference | Probe selected disabled investigators under a policy disabling native agents | Confounded; cannot establish behavior when choices are available |
+| S19 confidence | Reports express limitations and qualitative confidence | Numeric conclusion confidence remains absent |
+
+The follow-up narrows several evidence gaps but does not close all twenty scenarios.
+Fresh drift, closure-lead, minority objection, later-phase UNKNOWN, and full
+regression observations remain necessary. The source-guidance refinements are
+motivated by observed behavior; they are not yet evidence of stable improvement.

@@ -92,3 +92,72 @@ def test_existing_run_is_not_cleaned_up_and_new_failure_cleans_only_owned_auth(
         harness.prepare(SimpleNamespace(run_dir=fresh))
     assert not (fresh / "home/.codex/auth.json").exists()
     assert auth.exists()
+
+
+def recovery_fixture(tmp_path):
+    import hashlib
+    import sqlite3
+    from types import SimpleNamespace
+
+    old = tmp_path / "old-session"
+    source, run = old / "work/source", old / "work/run"
+    source.mkdir(parents=True)
+    run.mkdir()
+    ticket = old / "work/ticket.md"
+    ticket.write_text("original ticket")
+    (source / "source.py").write_text("print('source')")
+    for p in (old / "work/outcome.md", old / "work/request.txt", old / "control/events.jsonl"):
+        p.parent.mkdir(exist_ok=True)
+        p.write_text("old operator chat must be denied")
+    with sqlite3.connect(run / "discovery.sqlite") as db:
+        db.executescript("""
+        CREATE TABLE source_repository (repository_root TEXT);
+        CREATE TABLE discovery_run (input_artifact_id INTEGER);
+        CREATE TABLE artifact (artifact_id INTEGER, artifact_sha256 TEXT);
+        INSERT INTO discovery_run VALUES (1);
+        """)
+        db.execute("INSERT INTO source_repository VALUES (?)", (str(source),))
+        db.execute(
+            "INSERT INTO artifact VALUES (1, ?)", (hashlib.sha256(ticket.read_bytes()).hexdigest(),)
+        )
+    return SimpleNamespace(resume_run=run, source=source, ticket=ticket)
+
+
+def test_recovery_requires_original_source_and_ticket(tmp_path):
+    args = recovery_fixture(tmp_path)
+    assert harness.recovery_inputs(args) == (args.resume_run, args.source, args.ticket)
+    args.ticket.write_text("replacement")
+    with pytest.raises(ValueError, match="immutable input"):
+        harness.recovery_inputs(args)
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Seatbelt integration")
+def test_recovery_boundary_permits_only_selected_durable_state(tmp_path):
+    args = recovery_fixture(tmp_path)
+    work = tmp_path / "new-session/work"
+    work.mkdir(parents=True)
+    sb = tmp_path / "resume.sb"
+    policy = harness.profile(
+        [Path(p) for p in harness.SYSTEM_READ]
+        + [
+            work,
+            args.resume_run,
+            args.source,
+            args.ticket,
+            Path(sys.executable).resolve().parent.parent,
+        ],
+        [work, args.resume_run],
+    )
+    sb.write_text(policy)
+    env = {
+        "EVAL_PYTHON": str(Path(sys.executable).resolve()),
+        "PATH": "/usr/bin:/bin",
+        "HOME": str(work),
+    }
+    old = args.resume_run.parent
+    denied = [old / "outcome.md", old / "request.txt", old.parent / "control/events.jsonl"]
+    result = harness.probe(sb, env, work, denied, args.source, args.ticket, args.resume_run)
+    assert result["passed"]
+    assert len(result["checks"]) == 3
+    assert (args.source / "source.py").read_text() == "print('source')"
+    assert not list(args.resume_run.glob("isolation-probe-*"))

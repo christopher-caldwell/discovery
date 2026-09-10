@@ -13,7 +13,9 @@ into concrete inputs, expected observations, failure signals and evidence
 requirements. The [coverage ledger](evaluations/coverage-ledger.md) distinguishes
 structural checks from model behavior; the
 [isolated campaign](evaluations/isolated-campaign.md) records repeat runs and
-the implementation changes they motivate.
+the implementation changes they motivate. The
+[feature and recovery follow-up](evaluations/feature-and-recovery.md) extends that
+evidence with a scoped proposal, conflicting-source recovery and independent review.
 
 ## Evaluate the process from outside
 

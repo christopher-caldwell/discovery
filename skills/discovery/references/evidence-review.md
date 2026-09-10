@@ -24,6 +24,11 @@ processing code at explicit boundaries instead of an independently rewritten
 approximation. These checks apply when those behaviors are claimed, not to every
 experiment regardless of purpose.
 
+For error-handling claims, inject the failure through the proposed operation itself.
+A separate failing statement followed by a test's own rollback does not verify the
+operation's exception classification or cleanup. Include pre-existing state when it
+could make an unrelated failure look like an expected result, such as a duplicate.
+
 Separate original behavior, proposed behavior, requirements and test assumptions.
 A test may enforce an assumption absent from the request. Capture that ambiguity;
 do not silently promote it into a user requirement. Read the actual failing
