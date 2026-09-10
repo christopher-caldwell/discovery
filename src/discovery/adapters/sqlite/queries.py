@@ -44,6 +44,11 @@ def state(con: sqlite3.Connection, root: Path) -> dict:
         ).fetchone()
     )
     for table in (
+        "evidence",
+        "argument",
+        "argument_evidence",
+        "artifact",
+        "agent_run",
         "phase_revision",
         "lead",
         "claim",

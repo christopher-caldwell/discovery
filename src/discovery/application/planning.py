@@ -2,6 +2,7 @@ import sqlite3
 
 from discovery.adapters.sqlite.queries import plan
 from discovery.adapters.sqlite.records import entity, insert, resolve
+from discovery.application.investigation import reopen
 from discovery.domain.encoding import canonical, digest, now, uid
 from discovery.domain.errors import require
 
@@ -9,7 +10,14 @@ from discovery.domain.errors import require
 def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: dict) -> dict:
     run = con.execute("SELECT * FROM discovery_run").fetchone()
     require(
-        run["current_phase_no"] == 1,
+        run["current_phase_no"] == 1
+        or (
+            run["current_phase_no"] == 2
+            and (
+                name in ("need.create", "lane.create", "lane.depends-on", "question.resolve")
+                or (name == "question.create" and data.get("technical"))
+            )
+        ),
         "WRONG_PHASE",
         "Intent and plan edits require Phase 1; regress first.",
     )
@@ -36,6 +44,14 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: 
             "answered_by_actor_id=?, dt_modified=? WHERE clarification_question_id=?",
             (data["answer"], actor, now(), q["clarification_question_id"]),
         )
+        if run["current_phase_no"] == 2:
+            affected = con.execute(
+                "SELECT research_lane_id FROM research_lane WHERE answer_question_id=? "
+                "UNION SELECT research_lane_id FROM lead WHERE clarification_question_id=?",
+                (q["clarification_question_id"], q["clarification_question_id"]),
+            ).fetchall()
+            for row in affected:
+                reopen(con, row[0])
         return {"uuid": q["clarification_question_uuid"], "status": "answered"}
     if name == "need.create":
         return entity(
@@ -69,6 +85,11 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: 
             **provenance,
         )
         for need in needs:
+            con.execute(
+                "UPDATE research_need SET need_status='covered',dt_modified=? WHERE "
+                "research_need_id=?",
+                (now(), need["research_need_id"]),
+            )
             con.execute(
                 "INSERT INTO research_lane_need VALUES (?,?)",
                 (lane["id"], need["research_need_id"]),
@@ -104,6 +125,8 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: 
         ).fetchone()
         require(not cycle, "LANE_DEPENDENCY_CYCLE", "Dependency would create a cycle.")
         con.execute("INSERT INTO research_lane_dependency VALUES (?,?,?)", (a, b, data["reason"]))
+        if run["current_phase_no"] == 2:
+            reopen(con, a)
         return {
             "lane_uuid": lane["research_lane_uuid"],
             "depends_on_uuid": dep["research_lane_uuid"],

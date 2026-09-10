@@ -6,6 +6,12 @@ from discovery.domain.encoding import uid
 from discovery.domain.errors import require
 
 ENTITIES = {
+    "lead": ("lead", "LEAD"),
+    "method": ("research_method", "M"),
+    "evidence": ("evidence", "E"),
+    "claim": ("claim", "C"),
+    "argument": ("argument", "ARG"),
+    "source": ("source_repository", "SRC"),
     "question": ("clarification_question", "Q"),
     "need": ("research_need", "RN"),
     "lane": ("research_lane", "L"),
@@ -33,6 +39,9 @@ def entity(con: sqlite3.Connection, kind: str, **values: object) -> dict:
 
 def resolve(con: sqlite3.Connection, kind: str, ref: str) -> dict:
     table, prefix = ENTITIES[kind]
+    require(
+        isinstance(ref, str) and ref.strip(), "INVALID_ARGUMENT", f"A {kind} reference is required."
+    )
     if ref.startswith(prefix + "-") and ref[len(prefix) + 1 :].isdigit():
         field, value = table + "_id", int(ref[len(prefix) + 1 :])
     else:

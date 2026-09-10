@@ -40,7 +40,11 @@ class CommandStore:
             if initialize and version == 0:
                 initialize_schema(con)
             else:
-                require(version == 3, "SCHEMA_VERSION_UNSUPPORTED", "Expected Discovery schema 3.")
+                require(
+                    version == 4 or (version == 3 and name == "run.upgrade"),
+                    "SCHEMA_VERSION_UNSUPPORTED",
+                    "Schema 4 required; use run upgrade for schema 3.",
+                )
             exists = con.execute("SELECT * FROM discovery_run").fetchone()
             if exists:
                 report = verify(con, self.root)

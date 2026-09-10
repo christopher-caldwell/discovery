@@ -31,11 +31,11 @@ def confidence(value: str) -> float:
 
 
 def parser() -> Parser:
-    p = Parser(description="Discovery milestone 1: durable intent and research planning.")
+    p = Parser(description="Discovery: durable intent, investigation, and evidence.")
     p.add_argument(
         "--version",
         action="version",
-        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 3}}),
+        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 4}}),
     )
     p.add_argument("--json", action="store_true")
     p.add_argument(
@@ -50,12 +50,28 @@ def parser() -> Parser:
     for simple in ("status", "resume"):
         families.add_parser(simple).set_defaults(command=simple)
     for family, operations in {
-        "run": ["init"],
+        "run": ["init", "upgrade"],
         "question": ["create", "list", "resolve"],
-        "research-need": ["create", "list"],
-        "lane": ["create", "list", "depends-on"],
+        "research-need": ["create", "list", "answer"],
+        "lane": [
+            "create",
+            "list",
+            "depends-on",
+            "activate",
+            "reopen",
+            "closure-begin",
+            "close",
+            "check",
+        ],
+        "lead": ["create", "list", "disposition"],
+        "method": ["create", "list", "disposition"],
+        "artifact": ["capture", "list"],
+        "evidence": ["create", "list", "retract"],
+        "claim": ["create", "list", "check", "evaluate", "reject"],
+        "argument": ["create", "list", "verify", "resolve-counter"],
+        "source": ["refresh", "list"],
         "surface": ["list", "disposition"],
-        "research": ["record"],
+        "research": ["record", "list"],
         "plan": ["snapshot", "review"],
         "phase": ["check", "advance", "regress"],
         "audit": ["verify"],
@@ -64,7 +80,10 @@ def parser() -> Parser:
         for operation in operations:
             cmd = group.add_parser(operation)
             name = ("need" if family == "research-need" else family) + "." + operation
+            if name == "research.list":
+                name = "activity.list"
             cmd.set_defaults(command=name)
+            phase2_arguments(cmd, name)
             if name == "run.init":
                 cmd.add_argument("--title", required=True, type=text)
                 cmd.add_argument("--input", required=True)
@@ -77,6 +96,11 @@ def parser() -> Parser:
                 cmd.add_argument("--rationale", required=True, type=text)
             if name == "question.create":
                 cmd.add_argument("--non-blocking", action="store_true")
+                cmd.add_argument(
+                    "--technical",
+                    action="store_true",
+                    help="Phase 2 technical uncertainty; intent ambiguity requires regression.",
+                )
                 cmd.add_argument("--authority", required=True, type=text)
                 cmd.add_argument("--authority-confidence", required=True, type=confidence)
             if name in ("need.create", "lane.create"):
@@ -112,6 +136,7 @@ def parser() -> Parser:
                 )
                 cmd.add_argument("--reason", required=True, type=text)
             if name == "research.record":
+                cmd.add_argument("--method", type=text)
                 cmd.add_argument("--query", required=True, type=text)
                 cmd.add_argument("--summary", required=True, type=text)
                 cmd.add_argument("--origin-uri", required=True, type=text)
@@ -129,6 +154,98 @@ def parser() -> Parser:
                 )
                 cmd.add_argument("--reason", required=True, type=text)
     return p
+
+
+def phase2_arguments(cmd: Parser, name: str) -> None:
+    with_ref = {
+        "lane.activate",
+        "lane.reopen",
+        "lane.closure-begin",
+        "lane.close",
+        "lane.check",
+        "need.answer",
+        "lead.disposition",
+        "method.disposition",
+        "claim.check",
+        "claim.evaluate",
+        "claim.reject",
+        "evidence.retract",
+        "argument.verify",
+        "argument.resolve-counter",
+    }
+    if name in with_ref:
+        cmd.add_argument("ref", type=text)
+    if name in {"lead.create", "method.create", "evidence.create", "claim.create"}:
+        cmd.add_argument("--lane", required=True, type=text)
+    if name in {
+        "lane.reopen",
+        "source.refresh",
+        "claim.reject",
+        "evidence.retract",
+        "argument.resolve-counter",
+        "lead.disposition",
+        "method.disposition",
+    }:
+        cmd.add_argument("--reason", required=True, type=text)
+    if name in {"lane.close", "need.answer"}:
+        cmd.add_argument("--answer", required=True, type=text)
+    if name == "lane.close":
+        cmd.add_argument("--limitations", required=True, type=text)
+        cmd.add_argument("--question", type=text)
+    if name == "lead.create":
+        cmd.add_argument("--activity", required=True, type=text)
+    if name in {"lead.create", "claim.create"}:
+        cmd.add_argument("--text", required=True, type=text)
+        cmd.add_argument("--impact", required=True, choices=["contextual", "material", "critical"])
+    if name == "lead.disposition":
+        cmd.add_argument(
+            "--disposition",
+            required=True,
+            choices=[
+                "investigated",
+                "irrelevant",
+                "duplicate",
+                "inaccessible",
+                "requires_human_input",
+            ],
+        )
+        cmd.add_argument("--activity", type=text)
+        cmd.add_argument("--duplicate-of", type=text)
+        cmd.add_argument("--question", type=text)
+    if name == "method.create":
+        cmd.add_argument("--name", required=True, type=text)
+    if name == "method.disposition":
+        cmd.add_argument(
+            "--disposition",
+            required=True,
+            choices=["completed", "unavailable", "inaccessible", "not_applicable"],
+        )
+    if name == "artifact.capture":
+        cmd.add_argument("--file", required=True, type=text)
+        cmd.add_argument("--origin-uri", required=True, type=text)
+        cmd.add_argument("--source-backed", action="store_true")
+    if name == "evidence.create":
+        cmd.add_argument("--artifact", required=True, type=text)
+        cmd.add_argument("--kind", required=True, choices=["primary", "secondary", "empirical"])
+        cmd.add_argument("--locator", required=True, type=text)
+        cmd.add_argument("--observation", required=True, type=text)
+    if name == "claim.create":
+        cmd.add_argument(
+            "--kind",
+            required=True,
+            choices=["current_behavior", "vendor_capability", "constraint", "intended_behavior"],
+        )
+    if name == "argument.create":
+        cmd.add_argument("--claim", required=True, type=text)
+        cmd.add_argument("--role", required=True, choices=["supports", "refutes", "qualifies"])
+        cmd.add_argument("--evidence", required=True, action="append", type=text)
+        cmd.add_argument("--reasoning", required=True, type=text)
+        cmd.add_argument("--limitations", required=True, type=text)
+    if name == "argument.verify":
+        cmd.add_argument("--outcome", required=True, choices=["passed", "failed", "inconclusive"])
+        cmd.add_argument("--report", required=True, type=text)
+    if name == "argument.resolve-counter":
+        cmd.add_argument("--evidence-ref", required=True, type=text)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -153,12 +270,14 @@ def main(argv: list[str] | None = None) -> int:
         readonly = name in (
             "status",
             "resume",
+            "lane.check",
+            "claim.check",
             "phase.check",
             "audit.verify",
             "plan.snapshot",
         ) or name.endswith(".list")
         if readonly:
-            result = query(root, name)
+            result = query(root, name, ns.get("ref"))
             if name == "audit.verify" and not result["valid"]:
                 raise DiscoveryError(
                     "AUDIT_INTEGRITY_FAILURE", "Audit verification failed.", **result
@@ -172,7 +291,11 @@ def main(argv: list[str] | None = None) -> int:
                 )
             if name == "phase.regress" and ":" not in ns["cause"]:
                 raise DiscoveryError("INVALID_ARGUMENT", "Cause must use kind:ref syntax.")
-            for key in ("needs", "methods", "surfaces"):
+            if not ns.get("technical"):
+                ns.pop("technical", None)
+            if ns.get("method") is None:
+                ns.pop("method", None)
+            for key in ("needs", "methods", "surfaces", "evidence"):
                 if key in ns:
                     ns[key] = sorted(set(ns[key]))
             output = {"ok": True, **execute(root, name, ns, request, actor, session)}

@@ -1,0 +1,15 @@
+ALTER TABLE research_lane ADD COLUMN closure_status TEXT NOT NULL DEFAULT 'none' CHECK (closure_status IN ('none','running','stale','completed'));
+ALTER TABLE research_lane ADD COLUMN answer_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE research_lane ADD COLUMN limitations TEXT NOT NULL DEFAULT '';
+ALTER TABLE research_lane ADD COLUMN answer_question_id INTEGER REFERENCES clarification_question(clarification_question_id);
+ALTER TABLE research_need ADD COLUMN answer_text TEXT NOT NULL DEFAULT '';
+ALTER TABLE argument ADD COLUMN counter_status TEXT NOT NULL DEFAULT 'open' CHECK (counter_status IN ('open','resolved'));
+ALTER TABLE argument ADD COLUMN resolution_evidence_id INTEGER REFERENCES evidence(evidence_id);
+ALTER TABLE argument ADD COLUMN resolution_reason TEXT NOT NULL DEFAULT '';
+ALTER TABLE argument ADD COLUMN verification_artifact_id INTEGER REFERENCES artifact(artifact_id);
+CREATE INDEX idx_argument_resolution_evidence ON argument (resolution_evidence_id);
+CREATE INDEX idx_argument_verification_artifact ON argument (verification_artifact_id);
+CREATE INDEX idx_lane_answer_question ON research_lane (answer_question_id);
+DROP INDEX idx_source_repository_uri_revision;
+CREATE INDEX idx_source_repository_uri_revision ON source_repository (repository_uri, baseline_revision);
+PRAGMA user_version = 4;

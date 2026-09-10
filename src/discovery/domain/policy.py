@@ -1,6 +1,6 @@
 POLICY = {
-    "policy_version": "milestone-1",
-    "schema_version": 3,
+    "policy_version": "phase2-v1",
+    "schema_version": 4,
     "source_excluded_directories": [
         ".git",
         ".discovery",

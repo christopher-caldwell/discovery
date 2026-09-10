@@ -21,7 +21,7 @@ def test_version_without_run_has_json_envelope(options, tmp_path):
     assert result.returncode == 0 and not result.stderr
     assert json.loads(result.stdout) == {
         "ok": True,
-        "result": {"version": __version__, "schema_version": 3},
+        "result": {"version": __version__, "schema_version": 4},
     }
     assert not list(tmp_path.iterdir())
 

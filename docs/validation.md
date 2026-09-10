@@ -23,7 +23,7 @@ Self-review found and fixed three issues during implementation:
 2. Event hashes alone missed schema-protection changes. The committed-state checksum now includes schema definitions and version as well as normalized data.
 3. Regression initially referenced application default surfaces. It now uses the run's frozen policy; source-directory exclusions are frozen there too.
 
-Not claimed as tested or implemented: full 2→3→4→finalized traversal; leased-agent expiry/reclaim; overlap report isolation; evidence admissibility and lane closure; disposable experiments; adversarial defeaters; source refresh/migration; filesystem power-loss behavior; or adversarial replacement of an entire database. These are explicit later-slice boundaries, not passing placeholder checks.
+At the end of the original slice, not yet claimed as tested or implemented: full 2→3→4→finalized traversal; leased-agent expiry/reclaim; overlap report isolation; evidence admissibility and lane closure; disposable experiments; adversarial defeaters; source refresh/migration; filesystem power-loss behavior; or adversarial replacement of an entire database. These are explicit later-slice boundaries, not passing placeholder checks.
 
 ## Installation follow-up
 
@@ -34,3 +34,29 @@ validators pass. The active pip-owned editable executable and module report
 the checkout. `codex plugin list --marketplace personal --json` confirms
 `discovery@personal` installed and enabled. See the installation guide for exact
 locations and future refresh commands.
+
+
+## Phase 2 release — 0.2.0 / schema 4
+
+`uv run pytest -q`: **69 passed**. This includes the original transaction, audit,
+restart, and concurrent-process tests plus real Phase 2 traversal, scoped
+research provenance, closure retries, lead dispositions, UNKNOWN blockers,
+impact-based admissibility, minority counterevidence, counterargument recovery,
+source drift/refresh, idempotent refresh, and schema-3 migration rollback.
+
+A lighter subagent created the disposable webhook fixture in
+`tests/fixtures/phase2`. Its late-retry bug is intentional: the fixture's separate
+test run yields one pass and one expected failure. Those toy tests are excluded
+from the main suite. Evidence files are clearly fabricated offline inputs, not
+verified statements about a real vendor. The subagent's first CLI walkthrough
+exposed an UNKNOWN need-answer bypass; a regression test now rejects it.
+
+Leased agents, Phase 3 feasibility, Phase 4 synthesis/finalization, and production
+project validation remain outside this release. Model-authored verification
+reports do not establish semantic correctness by themselves.
+
+Ruff lint and formatting checks, both skill/plugin validators, and source/wheel
+builds passed. The isolated wheel reports 0.2.0/schema 4 and contains the migration
+resource. The refreshed system editable package metadata and both CLI entry
+points agree. Direct and installed cached skills match the checkout, and the
+personal marketplace reports Discovery installed and enabled.

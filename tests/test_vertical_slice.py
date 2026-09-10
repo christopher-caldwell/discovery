@@ -130,7 +130,7 @@ def test_valid_advance_regress_retraverse(run):
     assert call("phase", "advance")["result"]["phase"] == 2
     assert (
         call("phase", "advance", expected=2)["error"]["details"]["violations"][0]["code"]
-        == "PHASE_NOT_IMPLEMENTED"
+        == "RESEARCH_NEED_UNANSWERED"
     )
     assert question(call, expected=2)["error"]["code"] == "WRONG_PHASE"
     regress = call(
@@ -549,6 +549,7 @@ def test_regression_from_phase_four_retains_phase_one(run):
     )
     assert con.execute("SELECT count(*) FROM phase_revision WHERE revision_no=2").fetchone()[0] == 3
     con.close()
+    assert run["call"]("phase", "advance")["result"]["phase"] == 3
     run["call"]("phase", "advance", expected=2)
 
 

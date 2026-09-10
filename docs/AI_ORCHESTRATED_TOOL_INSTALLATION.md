@@ -34,7 +34,7 @@ active executable:
   /Library/Frameworks/Python.framework/Versions/3.13/bin/discovery
 
 Python package:
-  discovery-cli 0.1.0, editable, pointing at the checkout above
+  discovery-cli 0.2.0, editable, pointing at the checkout above
 
 direct skill:
   /Users/christophercaldwell/.codex/skills/discovery
@@ -46,7 +46,7 @@ personal plugin source:
   /Users/christophercaldwell/plugins/discovery
 
 installed plugin cache:
-  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.1.0+codex.20260910162056
+  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910165725
 
 plugin identifier:
   discovery@personal (installed and enabled)
@@ -66,7 +66,7 @@ skills/discovery/SKILL.md       metadata.version
 .codex-plugin/plugin.json      version
 ```
 
-The current release is `0.1.0`; its SQLite schema is version `3`. Release version
+The current release is `0.2.0`; its SQLite schema is version `4`. Release version
 and schema version are different contracts. Existing schema versions other than
 3 are rejected, never reset. A local plugin cache suffix such as
 `+codex.20260910162056` changes cache identity, not CLI or database semantics.
@@ -115,7 +115,7 @@ python3 -m pip show discovery-cli
 For this pip-owned installation the two version commands must return:
 
 ```json
-{"ok":true,"result":{"schema_version":3,"version":"0.1.0"}}
+{"ok":true,"result":{"schema_version":4,"version":"0.2.0"}}
 ```
 
 For a uv-owned installation, run the module/metadata checks with that tool
@@ -201,7 +201,7 @@ uv run ruff check src tests
 uv run ruff format --check src tests
 ```
 
-The installation change passed **50 tests**, both skill/plugin validators, and
+The installation change passed **69 tests**, both skill/plugin validators, and
 all executable, package-metadata, direct-copy, and cached-copy checks. The
 personal plugin list showed Discovery installed/enabled and retained Taskledger.
 

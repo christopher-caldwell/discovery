@@ -3,21 +3,23 @@ from pathlib import Path
 from discovery.adapters.sqlite.audit import verify
 from discovery.adapters.sqlite.connection import connect
 from discovery.adapters.sqlite.queries import plan, state
-from discovery.adapters.sqlite.records import ENTITIES
+from discovery.adapters.sqlite.records import ENTITIES, resolve
 from discovery.domain.encoding import canonical, digest
 from discovery.domain.errors import require
 from discovery.domain.gates import phase_violations
+from discovery.domain.investigation import claim_violations, lane_violations
 
 
-def query(root: Path, name: str) -> dict | list:
+def query(root: Path, name: str, ref: str | None = None) -> dict | list:
     con = connect(root / "discovery.sqlite")
     try:
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
         require(
-            con.execute("PRAGMA user_version").fetchone()[0] == 3,
+            con.execute("PRAGMA user_version").fetchone()[0] == 4
+            or (name == "audit.verify" and con.execute("PRAGMA user_version").fetchone()[0] == 3),
             "SCHEMA_VERSION_UNSUPPORTED",
-            "Expected Discovery schema 3.",
+            "Schema 4 required; use run upgrade for schema 3.",
         )
         require(
             con.execute("SELECT 1 FROM discovery_run").fetchone(),
@@ -41,6 +43,11 @@ def query(root: Path, name: str) -> dict | list:
             packet = plan(con)
             return {"plan_sha256": digest(canonical(packet).encode()), "context": packet}
         snapshot = state(con, root)
+        if name in ("lane.check", "claim.check"):
+            kind = name.split(".")[0]
+            record = resolve(con, kind, ref)
+            violations = (lane_violations if kind == "lane" else claim_violations)(snapshot, record)
+            return {"satisfied": not violations, "violations": violations}
         violations = phase_violations(snapshot)
         gate = {"can_advance": not violations, "violations": violations}
         if name == "phase.check":
@@ -69,13 +76,33 @@ def query(root: Path, name: str) -> dict | list:
                     "research record",
                     "plan snapshot",
                     "plan review",
+                    "source refresh",
                 ]
             else:
                 next_actions += ["phase regress"]
+                if run["current_phase_no"] == 2:
+                    next_actions += [
+                        "question create --technical",
+                        "question resolve",
+                        "lane activate",
+                        "lead create",
+                        "research record",
+                        "artifact capture",
+                        "evidence create",
+                        "claim create",
+                        "argument create",
+                        "argument verify",
+                        "claim evaluate",
+                        "lane closure-begin",
+                        "lane close",
+                        "research-need answer",
+                        "source refresh",
+                    ]
             if not violations:
                 next_actions.append("phase advance")
         return {
             **result,
+            "policy": snapshot["policy"],
             "input_artifact_id": run["input_artifact_id"],
             "intent": "Request assertions and answered questions; intent extraction is deferred.",
             "input_artifact": dict(
@@ -89,6 +116,9 @@ def query(root: Path, name: str) -> dict | list:
             "lanes": snapshot["research_lane"],
             "open_leads": [x for x in snapshot["lead"] if x["lead_status"] == "pending"],
             "claims": snapshot["claim"],
+            "evidence": snapshot["evidence"],
+            "arguments": snapshot["argument"],
+            "research_methods": snapshot["research_method"],
             "proof_obligations": snapshot["proof_obligation"],
             "defeaters": snapshot["defeater"],
             "legal_next_actions": next_actions,

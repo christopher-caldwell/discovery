@@ -1,5 +1,7 @@
 """Pure policy over a normalized snapshot; semantic judgments are recorded inputs."""
 
+from discovery.domain.investigation import phase_two_violations
+
 
 def phase_violations(state: dict) -> list[dict]:
     failures = []
@@ -14,7 +16,7 @@ def phase_violations(state: dict) -> list[dict]:
         if source["observed_drift"] or source["drift_status"] != "current":
             fail(
                 "SOURCE_DRIFT",
-                "Source baseline changed; refresh requires the next implementation slice.",
+                "Source baseline changed; use source refresh and revalidate affected evidence.",
             )
     for q in state["clarification_question"]:
         if q["question_status"] == "open":
@@ -37,6 +39,8 @@ def phase_violations(state: dict) -> list[dict]:
     for a in state["assumption"]:
         if a["impact"] == "critical" and a["assumption_status"] == "active":
             fail("CRITICAL_ASSUMPTION", a["assumption_text"])
+    if phase == 2:
+        return failures + phase_two_violations(state)
     if phase != 1:
         fail(
             "PHASE_NOT_IMPLEMENTED",
