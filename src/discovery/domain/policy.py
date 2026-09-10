@@ -1,0 +1,63 @@
+POLICY = {
+    "policy_version": "milestone-1",
+    "schema_version": 3,
+    "source_excluded_directories": [
+        ".git",
+        ".discovery",
+        ".venv",
+        "__pycache__",
+        ".pytest_cache",
+        ".ruff_cache",
+    ],
+    "source_fingerprint_version": "sha256-path-content-mode-v1",
+    "canonical_json": "python-json-sorted-utf8-v1",
+    "mandatory_phase1_surfaces": [
+        "request",
+        "source_code",
+        "tests",
+        "documentation",
+        "issue_history",
+        "external_dependencies",
+        "human_authority",
+    ],
+    "closure_methods_by_impact": {
+        impact: ["terminology", "snowballing", "contradiction", "evidence_gaps"]
+        for impact in ("contextual", "material", "critical")
+    },
+    "evidence_profiles": {
+        "contextual": ["provenance"],
+        "material": [
+            "provenance",
+            "primary_evidence",
+            "semantic_verification",
+            "contradiction_search",
+        ],
+        "critical": [
+            "provenance",
+            "primary_evidence",
+            "semantic_verification",
+            "contradiction_search",
+            "falsification",
+            "empirical_verification",
+        ],
+    },
+    "subagent_mode": "disabled",
+    "agent_count": 0,
+    "agent_lease_duration": 300,
+    "phase4_challenge_categories": [
+        "requirements",
+        "correctness",
+        "data_integrity",
+        "concurrency",
+        "failure_recovery",
+        "security",
+        "compatibility",
+        "performance",
+        "operations",
+        "testability",
+        "maintainability",
+        "evidence_freshness",
+    ],
+    "assurance_scoring_model": "deferred-fail-closed",
+    "experiment_safety_policy": "disposable-sandbox-only",
+}
