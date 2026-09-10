@@ -4,7 +4,9 @@ The product takes a potentially ambiguous or partly incorrect requirement and
 vets it against a repository. Its outcome is a thorough, evidence-backed document
 with an explained confidence assessment. A valid outcome can be that the available
 evidence cannot answer the question. It must not implement or fix the target
-request. Evaluation-driven changes to Discovery itself are in scope.
+request in the target repository. Isolated temporary probes and experiments may
+substantiate a recommendation without becoming delivery of the requested feature.
+Evaluation-driven changes to Discovery itself are in scope.
 
 ## Evaluate the process from outside
 

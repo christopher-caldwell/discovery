@@ -680,3 +680,25 @@ def test_invalid_command_file_never_reserves_attempt(designed, content):
     )
     assert call("experiment", "list")["result"][-1]["experiment_status"] == "planned"
     assert call("audit", "verify")["result"]["event_count"] == before
+
+
+def test_interim_report_includes_answered_need_and_resolvable_artifact_links(designed):
+    from pathlib import Path
+
+    call = designed["call"]
+    result = call("report", "export")["result"]
+    folder = Path(result["directory"])
+    packet = json.loads((folder / "report.json").read_text())
+    text = (folder / "report.md").read_text()
+    answered = [n for n in packet["state"]["research_need"] if n["need_status"] == "answered"]
+    assert answered and all(n["answer_text"] in text for n in answered)
+    assert packet["state"]["claim"]
+    assert packet["audit"]["valid"]
+    request = next(
+        a
+        for a in packet["state"]["artifact"]
+        if a["artifact_id"] == packet["state"]["run"]["input_artifact_id"]
+    )
+    relative = "../../../" + request["storage_path"]
+    assert f"]({relative})" in text
+    assert (folder / relative).resolve().is_file()

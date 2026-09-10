@@ -18,7 +18,10 @@ Schema 5 preserves the handoff tables and adds normalized lane closure state, la
 
 Schema 3/4 runs are not silently migrated. `run upgrade` verifies their existing audit/state, applies the additive migration under the same command transaction, then appends an event. Historical events and artifacts remain byte-identical. Policy stays frozen; its `schema_version` records the initialization policy's origin, while SQLite `user_version` reports the actual current schema. Upgrading a Phase 1 run can stale its plan snapshot because normalized records now have additional fields. Other old schema versions remain unsupported.
 
-Artifacts use content-addressed bytes, file/directory fsync, and atomic rename before SQLite metadata registration. A failed command can leave an orphan, which verification reports without deleting. Metadata cannot commit ahead of bytes. `artifact capture` saves an attributed snapshot; `--source-backed` additionally records the source baseline, revision, and relative file locator. The file must be inside the fingerprinted source scope and match the captured bytes under the command lock. Search and verification reports are authored reports, not automatically primary or empirical evidence.
+Artifacts use content-addressed bytes, file/directory fsync, and atomic rename before SQLite metadata registration. A failed command can leave an orphan, which verification reports without deleting.
+For `artifact capture`, phase, scope and source validation now precede persistence
+inside the command transaction; rejected validation and successful replay do not
+write new artifact bytes. Later persistence/transaction failures can still leave orphans. Metadata cannot commit ahead of bytes. `artifact capture` saves an attributed snapshot; `--source-backed` additionally records the source baseline, revision, and relative file locator. The file must be inside the fingerprinted source scope and match the captured bytes under the command lock. Search and verification reports are authored reports, not automatically primary or empirical evidence.
 
 The immutable event envelope is hash chained and includes the original result plus a checksum of normalized state and schema definitions/version. Audit verification checks all hashes/predecessors, current state/schema, foreign keys, SQLite integrity, artifact paths/hashes/sizes, and orphan files. This is tamper evidence, not event sourcing, authentication, or proof of semantic truth. A filesystem owner can replace an entire database with another internally consistent chain or backup; detecting that needs an external trusted checkpoint. Full verification on each command is deliberately conservative and may need optimization for large runs.
 
@@ -79,3 +82,15 @@ Investigators operate on immutable context and private finding/report rows. Leas
 ## Remaining extensions
 
 Explicit assumption/withdrawal conveniences, custom Phase 1 surface commands, richer profile policies, Linux/Windows experiment adapters, large-context pagination, and direct Taskledger ingestion remain extensions. The exported handoff contains structured requirements and traceability. These do not prevent current four-phase traversal. Real-project semantic validation is still needed.
+
+## Non-final investigation reports
+
+`report export` is an audit-verified read projection available at every phase. It
+materializes `report.md` and `report.json` under a content-addressed export directory,
+including the request, open questions, attributed research summaries, claim statuses,
+source observations and unmet gates. It does not mutate the ledger, advance phases,
+finalize a spec or infer a numeric confidence score. The JSON preserves the full
+structured snapshot. Artifact references still require the original run directory.
+Repeated exports of unchanged state are identical; observed source drift creates a
+distinct report even when the audit head is unchanged. Conflicting files and symlinks
+are rejected. `spec export` continues to require a compiled specification.

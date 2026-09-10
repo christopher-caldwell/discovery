@@ -161,3 +161,12 @@ Finally use `group reconcile --reason ... --report FILE`. Failed replicas cannot
 silently disappear: `group supersede` preserves the requested denominator, and a
 new group must complete. Enabled runs require reconciled groups in both Phase 2
 and Phase 4. No confidence score or vote overrides evidence or defeater gates.
+
+## Reporting without a final specification
+
+Use `discovery --json --run /path/to/run report export` when research is blocked or
+a bounded question has useful observations but has not completed specification
+gates. It exports current records, questions, source freshness and unfinished work
+without changing run state. The report labels authored observations separately from
+registered claims and leaves conclusion confidence unassessed. It is not a shortcut
+to a final technical specification or a standalone archive of artifact bytes.

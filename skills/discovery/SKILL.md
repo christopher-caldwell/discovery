@@ -47,7 +47,7 @@ discovery --run /absolute/path/to/run lane create --help
 
 Supported command families (inspect help for each operation):
 
-- `status`, `resume`, `audit verify`, `run upgrade`
+- `status`, `resume`, `report export`, `audit verify`, `run upgrade`
 - `artifact capture/list`, `source refresh/list`
 - `lead create/list/disposition`, `method create/list/disposition`
 - `evidence create/list/retract`, `claim create/list/check/evaluate/reject`
@@ -58,6 +58,13 @@ Supported command families (inspect help for each operation):
 - `surface list/disposition`, `research record/list`
 - `plan snapshot/review`
 - `phase check/advance/regress`
+
+For a blocked investigation or an explanation that does not call for an implementation,
+use `report export` to produce a non-final Markdown report and structured snapshot.
+It preserves questions, observations, claim statuses, source drift and unmet gates;
+it does not advance phases, assign conclusion confidence or finalize a specification.
+Do not invent design work to obtain an export. The report remains explicitly interim
+when formal evidence review is unfinished.
 
 Blocking is the default for questions. This release has no assumption/withdraw commands. Needs trace to the request artifact. Lanes must pose specific questions, link needs, and declare scope, impact, methods, and surfaces. Do not reduce impact to pass a gate.
 
@@ -70,6 +77,10 @@ Use `phase check` to see all blockers. Its success exit code does not mean `can_
 ## Phase 2 investigation
 
 Activate planned lanes and record research against lane surfaces. Link `research record` to a method with `--method M-001`. A completed method requires an actual linked research activity.
+
+Artifact capture is available in Phases 2–4; use `research record --report FILE`
+for Phase 1 observations. Inspect each command result before dependent batch work;
+a deterministic phase error requires changing the workflow, not repeating it.
 
 Capture saved source bytes with `artifact capture --file FILE --origin-uri URI`; add `--source-backed` for files in the source baseline. Register explicit evidence observations and locators, then claims and supporting/refuting/qualifying arguments. Classify direct/primary, secondary, or empirical evidence truthfully. A copied ticket is still an assertion. Verification reports are model/human judgments about the exact linked argument, not automatic fact checks.
 

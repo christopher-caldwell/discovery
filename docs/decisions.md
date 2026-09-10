@@ -185,3 +185,22 @@ New receipts include the exact `sandbox_profile` so policy changes remain visibl
 while release 0.2.0 is still being developed. A repeated real Boilerman experiment
 then ran 41 tests without worker-cleanup stderr. The earlier receipt is retained
 and classified inconclusive, rather than rewritten as success.
+
+
+## 018 — Non-final reports and capture validation from request-vetting runs
+
+Two Taskledger cases produced useful research but could not export through the
+final-spec path. `report export` now materializes an explicitly non-final audited
+snapshot and readable summary without relaxing any gate or inventing confidence.
+Research observations remain attributed reports; formal claim statuses remain
+visible. The report includes need answers, artifact links and orphan diagnostics.
+
+Repeated Phase 1 capture mistakes created seven orphan files. Artifact capture now
+retains input bytes in memory for identity, then validates phase/scope/source inside
+the transaction before persisting them. Replay still returns its original result
+even after regression. Other artifact-producing commands and late commit failures
+can still create orphans; the change does not claim universal orphan prevention.
+
+The simple case also exposed workflow cost and an absent answer-only completion
+route. Those need further evaluation, not an untested relaxation of evidence gates.
+Base version and schema remain unchanged.

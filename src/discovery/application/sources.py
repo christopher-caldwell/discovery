@@ -2,6 +2,7 @@ import json
 import sqlite3
 from pathlib import Path
 
+from discovery.adapters.filesystem.artifacts import capture
 from discovery.adapters.git.repository import baseline
 from discovery.adapters.sqlite.records import entity
 from discovery.application.claims import invalidate_claim
@@ -85,7 +86,7 @@ def write(
     require(
         run["current_phase_no"] in (2, 3, 4),
         "WRONG_PHASE",
-        "Evidence artifact capture requires Phase 2.",
+        "Evidence artifact capture requires Phases 2–4; use research record in Phase 1.",
     )
     values = {}
     if data["source_backed"]:
@@ -111,7 +112,7 @@ def write(
             "Refresh source baseline before capturing evidence.",
         )
         require(
-            digest(path.read_bytes()) == prepared["artifact"]["artifact_sha256"],
+            digest(path.read_bytes()) == data["content_sha256"],
             "SOURCE_DRIFT",
             "File changed during capture.",
         )
@@ -128,5 +129,5 @@ def write(
         captured_by_actor_id=actor,
         origin_uri=data["origin_uri"],
         **values,
-        **prepared["artifact"],
+        **capture(root, prepared["content"]),
     )

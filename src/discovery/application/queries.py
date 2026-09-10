@@ -79,6 +79,10 @@ def query(
         snapshot = state(con, root)
         if name == "spec.snapshot":
             return snapshot
+        if name == "report.export":
+            from discovery.application.reporting import export_report
+
+            return export_report(root, snapshot, audit)
         if name == "assurance.calculate":
             from discovery.domain.completion import assurance
 
@@ -131,7 +135,7 @@ def query(
         }
         if name == "status":
             return result
-        next_actions = ["status", "resume", "phase check", "audit verify"]
+        next_actions = ["status", "resume", "phase check", "audit verify", "report export"]
         if run["run_status"] == "active":
             if run["current_phase_no"] == 1:
                 next_actions += [

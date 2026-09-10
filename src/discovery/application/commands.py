@@ -63,7 +63,7 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         data["file"] = str(path)
         content = path.read_bytes()
         data["content_sha256"] = digest(content)
-        prepared["artifact"] = capture(root, content)
+        prepared["content"] = content
     elif name == "source.refresh":
         snapshot = query(root, "resume")
         source = snapshot["source_baselines"][0]

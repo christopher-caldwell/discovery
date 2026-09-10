@@ -55,6 +55,7 @@ def parser() -> Parser:
         families.add_parser(simple).set_defaults(command=simple)
     for family, operations in {
         **FAMILIES,
+        "report": ["export"],
         "run": ["init", "upgrade"],
         "question": ["create", "list", "resolve"],
         "research-need": ["create", "list", "answer"],
@@ -228,6 +229,10 @@ def phase2_arguments(cmd: Parser, name: str) -> None:
             choices=["completed", "unavailable", "inaccessible", "not_applicable"],
         )
     if name == "artifact.capture":
+        cmd.description = (
+            "Capture evidence artifacts in Phases 2–4. In Phase 1, use research record "
+            "with a report to preserve intent-investigation observations."
+        )
         cmd.add_argument("--file", required=True, type=text)
         cmd.add_argument("--origin-uri", required=True, type=text)
         cmd.add_argument("--source-backed", action="store_true")
@@ -293,6 +298,7 @@ def main(argv: list[str] | None = None) -> int:
             "plan.snapshot",
             "spec.snapshot",
             "spec.export",
+            "report.export",
             "assurance.calculate",
         ) or name.endswith(".list")
         if readonly:
