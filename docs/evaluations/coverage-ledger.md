@@ -85,3 +85,29 @@ The follow-up narrows several evidence gaps but does not close all twenty scenar
 Fresh drift, closure-lead, minority objection, later-phase UNKNOWN, and full
 regression observations remain necessary. The source-guidance refinements are
 motivated by observed behavior; they are not yet evidence of stable improvement.
+
+
+## Phase 4 retry and repair
+
+See [phase4-retry.md](phase4-retry.md). This is an informed repair followed by fresh
+isolated review, not a cold repeat of the whole original investigation.
+
+| Observable | New observation | Limit |
+| --- | --- | --- |
+| S12 isolated experiment | External handoff ran the real sandbox with restricted reads; eight-case then nineteen-case prototype receipts were recorded | Evaluator-controlled stopped-session handoff, not automatic dispatch |
+| S13 challenge depth | All twelve categories reviewed; reviewer found an existing-schema NOCASE counterexample despite eight passing tests | One root issue appeared in seven category records; these are not independent confirmations |
+| S14 regression/retraverse | Reviewer confirmed the issue, regressed 4→3, and requested new proof; revised proposal passed the normal gate back to Phase 4 | Root authored informed repair; subsequent independent review is separately recorded |
+| S15 recovery | Fresh review reconstructed exact draft and retained rejected/historical work without treating it as current proof | Selected durable history is intentionally available; unrelated logs remain denied |
+| S19 report/data structure | Revised narrative explains evidence limits and changed schema boundary; category duplication and receipt registration friction observed | Numeric conclusion confidence and proportional document size remain open |
+
+No target feature was implemented. These observations add specific process evidence;
+they do not establish general reliability or close every scenario.
+
+
+The second fresh Phase 4 review found a distinct filename-interpretation defect;
+after empirical reproduction and repair the run retraversed into Phase 4 again.
+The third review was interrupted by a usage limit before completing any current-draft
+category. Finalization therefore remains unobserved for this repaired proposal.
+S19 also produced a source rendering change: the same-snapshot Markdown comparison
+shrunk by 60.8%, retained exact machine records, and labeled rejected requirements.
+This does not demonstrate reduced model cost or supply a numeric confidence score.

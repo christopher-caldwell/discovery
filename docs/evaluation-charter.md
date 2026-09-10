@@ -16,6 +16,8 @@ structural checks from model behavior; the
 the implementation changes they motivate. The
 [feature and recovery follow-up](evaluations/feature-and-recovery.md) extends that
 evidence with a scoped proposal, conflicting-source recovery and independent review.
+The [Phase 4 retry](evaluations/phase4-retry.md) records the controlled experiment
+handoff, a semantic finding, and repair followed by forward retraversal.
 
 ## Evaluate the process from outside
 

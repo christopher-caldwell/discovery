@@ -1,5 +1,6 @@
 import json
 import sqlite3
+from collections.abc import Callable
 from pathlib import Path
 from uuid import UUID, uuid5
 
@@ -116,7 +117,15 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
     return {"uuid": e["experiment_uuid"], "operation": name}
 
 
-def execute(root: Path, data: dict, request: str, actor: dict, session: str) -> dict:
+def execute(
+    root: Path,
+    data: dict,
+    request: str,
+    actor: dict,
+    session: str,
+    *,
+    process_runner: Callable[[Path, list[str], int], dict] | None = None,
+) -> dict:
     """Reservation and result registration are separately audited short transactions.
 
     Replay never reruns the process. A missing receipt requires explicit abort/replacement.
@@ -207,7 +216,7 @@ def execute(root: Path, data: dict, request: str, actor: dict, session: str) -> 
             "SOURCE_DRIFT",
             "Source changed during sandbox creation; abort and replace experiment.",
         )
-        record = run_process(box, argv, data["timeout"])
+        record = (process_runner or run_process)(box, argv, data["timeout"])
         # The process cannot write this receipt: it is outside its permitted copy.
         record["source"] = result["source"]
         metadata = capture(root, canonical(record).encode())

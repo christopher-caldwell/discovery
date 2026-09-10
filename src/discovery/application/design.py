@@ -140,10 +140,13 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
         if name == "obligation.attach-evidence":
             e = resolve(con, "evidence", data["evidence_ref"])
             require(e["evidence_status"] == "active", "INVALID_STATE", "Evidence must be active.")
-            con.execute(
-                "INSERT INTO proof_obligation_evidence VALUES (?,?,?)",
+            inserted = con.execute(
+                "INSERT INTO proof_obligation_evidence VALUES (?,?,?) "
+                "ON CONFLICT(proof_obligation_id, evidence_id, relationship) DO NOTHING",
                 (oid, e["evidence_id"], "supports"),
-            )
+            ).rowcount
+            if not inserted:
+                return {"uuid": o["proof_obligation_uuid"], "status": o["obligation_status"]}
             status = "pending"
         elif name == "obligation.attach-experiment":
             e = resolve(con, "experiment", data["experiment"])
@@ -152,9 +155,13 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
                 "SCOPE_MISMATCH",
                 "Experiment must concern the same decision.",
             )
-            con.execute(
-                "INSERT INTO proof_obligation_experiment VALUES (?,?)", (oid, e["experiment_id"])
-            )
+            inserted = con.execute(
+                "INSERT INTO proof_obligation_experiment VALUES (?,?) "
+                "ON CONFLICT(proof_obligation_id, experiment_id) DO NOTHING",
+                (oid, e["experiment_id"]),
+            ).rowcount
+            if not inserted:
+                return {"uuid": o["proof_obligation_uuid"], "status": o["obligation_status"]}
             status = "pending"
         else:
             status = {

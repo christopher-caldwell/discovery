@@ -17,6 +17,29 @@ from discovery.domain.encoding import canonical
 from discovery.domain.errors import require
 
 
+def markdown_structure(contents: dict, artifacts: dict) -> dict:
+    """Keep execution payloads in the exact handoff/receipts, not repeated prose."""
+    experiments = []
+    for experiment in contents["experiment"]:
+        row = {
+            key: value
+            for key, value in experiment.items()
+            if key not in ("command_json", "environment_json")
+        }
+        receipt = artifacts.get(experiment["execution_artifact_id"])
+        row["execution_receipt"] = (
+            {
+                "ref": f"A-{receipt['artifact_id']:03d}",
+                "sha256": receipt["artifact_sha256"],
+                "run_relative_path": receipt["storage_path"],
+            }
+            if receipt
+            else None
+        )
+        experiments.append(row)
+    return {**contents, "experiment": experiments}
+
+
 def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False) -> dict:
     contents = structure(snapshot)
     report = assurance(snapshot) if final else None
@@ -38,15 +61,36 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
     }
     text = "# " + snapshot["run"]["run_title"] + "\n\n" + narrative.decode("utf-8") + "\n\n"
     text += "## Structured technical requirements\n\n"
-    for r in snapshot["technical_requirement"]:
-        text += (
-            f"- REQ-{r['technical_requirement_id']:03d}: {r['requirement_text']} "
-            f"(D-{r['technical_decision_id']:03d}, RN-{r['research_need_id']:03d})\n"
-            f"  Acceptance: {r['acceptance_criteria']}\n"
-            f"  Verification: {r['verification_plan']}\n"
-        )
+    decisions = {d["technical_decision_id"]: d for d in snapshot["technical_decision"]}
+    groups = {}
+    for requirement in snapshot["technical_requirement"]:
+        status = decisions[requirement["technical_decision_id"]]["decision_status"]
+        groups.setdefault(status, []).append(requirement)
+    headings = {
+        "accepted": "Current accepted decisions",
+        "proposed": "Proposed decisions — not accepted",
+        "rejected": "Historical rejected decisions — not current acceptance work",
+    }
+    for status in sorted(groups, key=lambda value: (value != "accepted", value)):
+        text += f"### {headings.get(status, 'Decision status: ' + status)}\n\n"
+        for r in groups[status]:
+            text += (
+                f"- REQ-{r['technical_requirement_id']:03d}: {r['requirement_text']} "
+                f"(D-{r['technical_decision_id']:03d}, RN-{r['research_need_id']:03d}; {status})\n"
+                f"  Acceptance: {r['acceptance_criteria']}\n"
+                f"  Verification: {r['verification_plan']}\n"
+            )
+        text += "\n"
     text += (
-        "\n## Structured discovery record\n\n```json\n" + json.dumps(contents, indent=2) + "\n```\n"
+        "\n## Structured discovery record\n\n"
+        "Experiment commands and environments are retained in full in "
+        "[handoff.json](handoff.json), under `traceability.experiment` by `experiment_id`. "
+        "Registered receipts contain the executed argv and results; their references and "
+        "hashes below resolve through [evidence-manifest.json](evidence-manifest.json). "
+        "Receipt paths are relative to the original run directory. A null receipt means "
+        "no execution receipt is registered, not a successful result.\n\n```json\n"
+        + json.dumps(markdown_structure(contents, artifacts), indent=2)
+        + "\n```\n"
     )
     text += (
         "\n## Limitations and adversarial record\n\n```json\n"

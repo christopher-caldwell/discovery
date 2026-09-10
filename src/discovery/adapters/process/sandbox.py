@@ -38,7 +38,9 @@ def copy_source(source: Path, destination: Path, excluded: set[str], run: Path) 
         )
 
 
-def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
+def execute(
+    sandbox: Path, argv: list[str], timeout: int, *, read_roots: list[Path] | None = None
+) -> dict:
     require(
         shutil.which("sandbox-exec") is not None,
         "SANDBOX_UNAVAILABLE",
@@ -52,12 +54,21 @@ def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
     require(1 <= timeout <= 600, "INVALID_ARGUMENT", "Timeout must be 1–600 seconds.")
     sandbox = sandbox.resolve()
     quote = json.dumps
-    # The original tree may be read, but all writes are confined to the copy.
-    # OS runtimes require broad read access; this is not credential-read isolation.
+    # Normal CLI probes retain the documented broad-read behavior. An external
+    # evaluation runner can narrow reads while retaining the same offline executor.
     profile = (
         "(version 1)(deny default)(allow process*)(allow sysctl-read)"
-        "(allow mach-lookup)(allow file-read*)(allow signal (target children))"
+        "(allow signal (target children))"
     )
+    if read_roots is None:
+        profile += "(allow file-read*)(allow mach-lookup)"
+    else:
+        roots = [*read_roots, sandbox]
+        profile += (
+            '(allow file-read-data (literal "/")'
+            + "".join(" (subpath " + quote(str(p.resolve())) + ")" for p in roots)
+            + ")"
+        )
     profile += "(allow file-read-metadata)(allow file-write* (subpath " + quote(str(sandbox)) + "))"
     profile += '(allow file-write-data (literal "/dev/null"))'
     env = {
@@ -145,5 +156,6 @@ def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
         "before_tree": before,
         "after_tree": baseline(sandbox, sandbox / "__no_run__", set())["baseline_tree_hash"],
         "sandbox_profile": profile,
-        "isolation": "macOS Seatbelt; network denied; writes only to disposable copy",
+        "isolation": "macOS Seatbelt; network denied; writes only to disposable copy"
+        + ("; reads restricted to declared roots" if read_roots is not None else ""),
     }

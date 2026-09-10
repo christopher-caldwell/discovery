@@ -36,10 +36,18 @@ def write(
             "ASSERTION_NOT_EVIDENCE",
             "The incoming request is not verified factual evidence.",
         )
+        registered_execution = (
+            artifact["artifact_kind"] == "experiment_result"
+            and con.execute(
+                "SELECT 1 FROM experiment WHERE execution_artifact_id=? "
+                "AND execution_uuid IS NOT NULL",
+                (artifact["artifact_id"],),
+            ).fetchone()
+        )
         require(
-            artifact["origin_uri"],
+            artifact["origin_uri"] or registered_execution,
             "EVIDENCE_PROVENANCE_REQUIRED",
-            "Evidence requires an artifact with explicit source provenance.",
+            "Evidence requires explicit source provenance or a registered experiment result.",
         )
         request_hash = con.execute(
             "SELECT artifact_sha256 FROM artifact WHERE artifact_id=?", (run["input_artifact_id"],)
