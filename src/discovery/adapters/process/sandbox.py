@@ -2,9 +2,11 @@
 
 import json
 import os
+import selectors
 import shutil
 import signal
 import subprocess
+import time
 from pathlib import Path
 
 from discovery.adapters.git.repository import baseline
@@ -67,39 +69,64 @@ def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
     }
     before = baseline(sandbox, sandbox / "__no_run__", set())["baseline_tree_hash"]
     start = now()
-    with (
-        (sandbox / "stdout.log").open("wb") as stdout,
-        (sandbox / "stderr.log").open("wb") as stderr,
-    ):
-        p = subprocess.Popen(
-            ["/usr/bin/sandbox-exec", "-p", profile, *argv],
-            cwd=sandbox,
-            env=env,
-            stdin=subprocess.DEVNULL,
-            stdout=stdout,
-            stderr=stderr,
-            start_new_session=True,
-        )
-        timed_out = False
+    limit = 2_000_000
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    truncated = {"stdout": False, "stderr": False}
+    p = subprocess.Popen(
+        ["/usr/bin/sandbox-exec", "-p", profile, *argv],
+        cwd=sandbox,
+        env=env,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    deadline = time.monotonic() + timeout
+    timed_out = output_limited = False
+    try:
+        with selectors.DefaultSelector() as selector:
+            for name, stream in (("stdout", p.stdout), ("stderr", p.stderr)):
+                os.set_blocking(stream.fileno(), False)
+                selector.register(stream, selectors.EVENT_READ, name)
+            while selector.get_map():
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    timed_out = True
+                    break
+                for key, _ in selector.select(min(remaining, 0.1)):
+                    chunk = os.read(key.fd, 65_536)
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                        continue
+                    name = key.data
+                    available = limit - len(buffers[name])
+                    buffers[name].extend(chunk[:available])
+                    if len(chunk) > available:
+                        truncated[name] = output_limited = True
+                        break
+                if output_limited:
+                    break
+            if not timed_out and not output_limited:
+                try:
+                    p.wait(timeout=max(0, deadline - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    timed_out = True
+    finally:
+        # Clean up the original process group; independently detached sessions
+        # are not guaranteed to remain in this group.
         try:
-            p.wait(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-        finally:
-            # Kill descendant processes even if the direct child exited successfully.
-            try:
-                os.killpg(p.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            p.wait()
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        p.wait()
+        p.stdout.close()
+        p.stderr.close()
 
-    def read_log(name):
-        path = sandbox / name
-        with path.open("rb") as f:
-            content = f.read(2_000_000)
+    def output(name):
         return {
-            "text": content.decode("utf-8", errors="replace"),
-            "truncated": path.stat().st_size > len(content),
+            "text": buffers[name].decode("utf-8", errors="replace"),
+            "truncated": truncated[name],
+            "captured_bytes": len(buffers[name]),
         }
 
     return {
@@ -108,10 +135,13 @@ def execute(sandbox: Path, argv: list[str], timeout: int) -> dict:
         "started": start,
         "finished": now(),
         "timeout": timeout,
-        "exit_code": p.returncode,
+        "exit_code": p.returncode if p.returncode else (125 if output_limited or timed_out else 0),
+        "process_exit_code": p.returncode,
+        "output_limited": output_limited,
+        "output_limit_bytes_per_stream": limit,
         "timed_out": timed_out,
-        "stdout": read_log("stdout.log"),
-        "stderr": read_log("stderr.log"),
+        "stdout": output("stdout"),
+        "stderr": output("stderr"),
         "before_tree": before,
         "after_tree": baseline(sandbox, sandbox / "__no_run__", set())["baseline_tree_hash"],
         "isolation": "macOS Seatbelt; network denied; writes only to disposable copy",

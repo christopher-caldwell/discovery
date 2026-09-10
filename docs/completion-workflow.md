@@ -47,8 +47,11 @@ from editing the original tree or contacting production databases; local copied
 SQLite files can be exercised within the sandbox.
 
 A result records command, environment, source identity, before/after tree hashes,
-stdout/stderr (up to 2 MB each, with explicit truncation), exit code, timeout, and
-execution times. Produced files remain in the scratch copy; capture any additional
+stdout/stderr, exit code, timeout, and execution times. Capture uses bounded
+pipes, preserving existing project log files. Exceeding 2,000,000 bytes on either
+stream stops the process group and records `output_limited: true`, explicit
+truncation, and an unsuccessful exit. This bounds captured output, not files the
+command itself writes inside the copy. Produced files remain in the scratch copy; capture any additional
 output needed as evidence explicitly. `ok:true` means the CLI recorded the result;
 inspect `exit_code` before interpreting the experiment.
 
@@ -60,7 +63,9 @@ Execution spans two short audited transactions: `experiment.exec` reserves the
 attempt; `experiment.record` stores the receipt. The process runs between them.
 Retry the exact original request to register an existing receipt; it never
 reruns the process. A reservation without a receipt returns
-`EXPERIMENT_INTERRUPTED`. Inspect the scratch directory, use `experiment abort`,
+`EXPERIMENT_INTERRUPTED`. Killing the controller can leave its child running;
+inspect the scratch directory and stop any surviving attempt before using
+`experiment abort`,
 plan a new attempt, then `experiment replace --replacement EXP-... --reason ...`.
 The old attempt remains historical. Linked obligations return to pending.
 

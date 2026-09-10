@@ -520,3 +520,96 @@ def test_experiment_timeout_is_recorded_and_cannot_pass(designed):
         expected=2,
     )
     assert call("audit", "verify")["result"]["valid"]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Seatbelt execution adapter")
+def test_killed_cli_reservation_recovers_without_duplicate_execution(designed):
+    import os
+    import signal
+    import subprocess
+    import time
+
+    from discovery.domain.encoding import uid
+
+    env = designed
+    call = env["call"]
+    experiment = plan_experiment(env)
+    request = uid()
+    command = json.dumps(
+        [
+            "/usr/bin/python3",
+            "-c",
+            "import os,time; from pathlib import Path; "
+            'p=Path("invocations.txt"); '
+            'p.write_text(p.read_text()+"run\\n" if p.exists() else "run\\n"); '
+            'Path("ready.tmp").write_text(str(os.getpid())); '
+            'Path("ready.tmp").rename("ready.pid"); time.sleep(30)',
+        ]
+    )
+    args = ("experiment", "exec", experiment["ref"], "--command", command, "--timeout", "60")
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "discovery",
+            "--json",
+            "--run",
+            str(env["root"]),
+            "--actor-id",
+            env["actor"],
+            "--actor-name",
+            "Test investigator",
+            "--actor-kind",
+            "model",
+            "--request-id",
+            request,
+            *args,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    sandbox = env["root"] / "scratch" / "experiments" / experiment["uuid"] / "source"
+    marker = sandbox / "ready.pid"
+    worker_pid = None
+    try:
+        deadline = time.monotonic() + 10
+        while not marker.exists() and process.poll() is None and time.monotonic() < deadline:
+            time.sleep(0.02)
+        assert marker.exists(), "Experiment never reached the execution checkpoint"
+        worker_pid = int(marker.read_text())
+        process.kill()
+        process.communicate(timeout=5)
+        assert process.returncode == -signal.SIGKILL
+        assert call(*args, request=request, expected=2)["error"]["code"] == "EXPERIMENT_INTERRUPTED"
+        assert (sandbox / "invocations.txt").read_text() == "run\n"
+        # A killed controller cannot promise subprocess cleanup. The test owns
+        # this exact child process group and stops it before replacing the attempt.
+        os.killpg(worker_pid, signal.SIGKILL)
+        worker_pid = None
+        call(
+            "experiment",
+            "abort",
+            experiment["ref"],
+            "--reason",
+            "Controller killed; child stopped; receipt absent",
+        )
+        replacement = plan_experiment(env)
+        call(
+            "experiment",
+            "replace",
+            experiment["ref"],
+            "--replacement",
+            replacement["ref"],
+            "--reason",
+            "Explicit fresh attempt after interruption",
+        )
+        assert call("audit", "verify")["result"]["valid"]
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.communicate(timeout=5)
+        if worker_pid:
+            try:
+                os.killpg(worker_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass

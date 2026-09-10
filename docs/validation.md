@@ -86,3 +86,39 @@ resource usage, large ledgers, and sandbox adapters for other operating systems.
 The CLI's actor attribution and isolated context are cooperative boundaries, not
 protection from a filesystem owner. Freeform narratives and reports still require
 actual semantic scrutiny; procedural success does not establish technical truth.
+
+
+## Bounded output and reusable cold fixture
+
+The full suite passed **88 tests**; Ruff, skill/plugin validators, and source/wheel
+builds passed. Direct and cached skills were refreshed; base release stays 0.2.0.
+Targeted sandbox/completion tests passed (13 tests), including a real SIGKILL of
+the controller after the child started. The original request retry reported
+`EXPERIMENT_INTERRUPTED`, retained one invocation, and allowed explicit
+abort/replacement with valid audit history. The test cleaned up its surviving
+child; automatic cleanup after controller death is not claimed. Separate stdout
+and stderr flood tests enforce the 2,000,000-byte limit, while a source-log test
+proves capture preserves existing stdout.log/stderr.log files and source hashes.
+
+A lighter agent built `tests/fixtures/outbox_worker`; a separate lighter agent
+inspected it without the sibling oracle. Its three unittest checks produced one
+pass and two intentional expected failures. The cold evaluator identified both
+the duplicate effect after crash/retry and committed attempt count contradicting
+a test's rollback expectation. It also retained the unresolved retry versus
+quarantine policy as a blocking human question. These match the original oracle, but root review found an attribution error in
+both: the ticket never explicitly requires the attempt counter to roll back.
+The oracle now distinguishes that extra test assumption; the cold report remains
+unchanged as evidence of the evaluator's limitation.
+It additionally flagged untested concurrent-worker behavior, without claiming a
+concurrency reproduction. The fixture simulates a side effect in SQLite and an
+injected crash, not a real external service or process-kill durability test.
+
+The bounded Discovery smoke recorded 15 audited events, two blocking questions,
+two needs, and two scoped lanes. Audit verification passed without orphan
+artifacts. It stopped in Phase 1 with unresolved questions, pending surfaces,
+and no semantic plan review. Initial source drift was recorded through refresh.
+The local report is `.discovery/outbox-cold-report.md`; the durable run is
+`.discovery/outbox-cold-check`. Subsequent repository commits change its Git
+baseline, so resuming must inspect drift. This exercise validates honest blockers
+and useful findings, not four-phase semantic quality. Future checks should reuse
+this fixture or a real project rather than multiply synthetic environments.

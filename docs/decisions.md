@@ -140,3 +140,17 @@ Assurance values measure procedural coverage, not truth probabilities. Overall
 assurance is the minimum dimension; unavailable/N/A work reduces demonstrated
 coverage. No score bypasses a gate. Exports materialize committed immutable
 artifacts and refuse conflicting files; they do not submit tasks to another tool.
+
+
+## 015 — Bounded capture and actual controller-crash recovery
+
+Experiment capture uses separate bounded pipe buffers instead of log files inside
+the source copy. This preserves project files named stdout.log/stderr.log and
+prevents unbounded capture files. Exceeding either stream's 2,000,000-byte limit
+stops the original process group and prevents a passed result. This is not a disk
+quota for program-created files or guaranteed cleanup of detached sessions.
+
+A real SIGKILL test now interrupts the CLI after its child starts. Retrying the
+same request preserves the single execution and reports interruption. Controller
+death can leave the child running, so recovery instructions require inspection
+and cleanup before abort/replacement. No release or schema bump is needed.

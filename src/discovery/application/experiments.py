@@ -249,6 +249,7 @@ def execute(root: Path, data: dict, request: str, actor: dict, session: str) -> 
             "artifact": a,
             "exit_code": record["exit_code"],
             "timed_out": record["timed_out"],
+            "output_limited": record.get("output_limited", False),
             "sandbox": str(box),
         }
 
