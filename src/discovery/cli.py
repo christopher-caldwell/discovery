@@ -5,6 +5,7 @@ import sqlite3
 import sys
 from pathlib import Path
 
+from discovery import __version__
 from discovery.application.commands import execute
 from discovery.application.queries import query
 from discovery.domain.encoding import canonical, uid, uuid
@@ -31,6 +32,11 @@ def confidence(value: str) -> float:
 
 def parser() -> Parser:
     p = Parser(description="Discovery milestone 1: durable intent and research planning.")
+    p.add_argument(
+        "--version",
+        action="version",
+        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 3}}),
+    )
     p.add_argument("--json", action="store_true")
     p.add_argument(
         "--run", required=True, type=Path, help="Run directory containing discovery.sqlite"

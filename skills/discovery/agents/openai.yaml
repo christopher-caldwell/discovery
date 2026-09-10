@@ -1,0 +1,4 @@
+interface:
+  display_name: "Discovery"
+  short_description: "Resolve intent and persist audited research plans"
+  default_prompt: "Use $discovery to resume this run and identify its next valid action."

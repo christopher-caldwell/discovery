@@ -19,6 +19,8 @@ uv build
 
 The wheel includes the executable schema. A run must not be stored on a network filesystem. Copy a live WAL database only with an appropriate SQLite backup/checkpoint procedure; copying the main database file alone is insufficient.
 
+For system-wide editable CLI installation, the direct skill, and the personal Codex plugin, follow [the installation guide](docs/AI_ORCHESTRATED_TOOL_INSTALLATION.md).
+
 ## Start a run
 
 Global options precede the command. `--json` also works after the command. Every mutation requires a caller-retained request UUID and explicit actor identity. A session UUID is generated per invocation unless provided. Reuse the **same request UUID and logical input** after a lost response; use a new UUID for a new operation.
@@ -86,4 +88,4 @@ Failure: `{"ok":false,"error":{"code":"...","message":"...","details":{...}}}`. 
 
 ## Next slice
 
-Implement Phase 2 lane execution and closure: leads with terminal dispositions, primary and closure methods, immutable artifact/evidence provenance, claim arguments and deterministic admissibility, need answers, and source refresh with targeted invalidation. Then add leased investigators and isolated overlap reconciliation. Experiments, proof obligations, adversarial defeaters, final rendering, and an agent-facing skill remain deferred.
+Implement Phase 2 lane execution and closure: leads with terminal dispositions, primary and closure methods, immutable artifact/evidence provenance, claim arguments and deterministic admissibility, need answers, and source refresh with targeted invalidation. Then add leased investigators and isolated overlap reconciliation. Experiments, proof obligations, adversarial defeaters, and final rendering remain deferred. The installed orchestration skill exposes only the supported milestone commands.

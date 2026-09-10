@@ -24,3 +24,13 @@ Self-review found and fixed three issues during implementation:
 3. Regression initially referenced application default surfaces. It now uses the run's frozen policy; source-directory exclusions are frozen there too.
 
 Not claimed as tested or implemented: full 2→3→4→finalized traversal; leased-agent expiry/reclaim; overlap report isolation; evidence admissibility and lane closure; disposable experiments; adversarial defeaters; source refresh/migration; filesystem power-loss behavior; or adversarial replacement of an entire database. These are explicit later-slice boundaries, not passing placeholder checks.
+
+## Installation follow-up
+
+Added a synchronized CLI/skill/plugin release contract and side-effect-free JSON
+`--version` command. The suite now has **50 passing tests**. Both distribution
+validators pass. The active pip-owned editable executable and module report
+0.1.0/schema 3; package metadata matches. Direct and cached skill contents match
+the checkout. `codex plugin list --marketplace personal --json` confirms
+`discovery@personal` installed and enabled. See the installation guide for exact
+locations and future refresh commands.
