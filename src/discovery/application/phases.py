@@ -10,7 +10,14 @@ from discovery.domain.gates import phase_violations
 from discovery.domain.transitions import next_phase, regression_phases
 
 
-def transition(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path) -> dict:
+def transition(
+    con: sqlite3.Connection,
+    actor: int,
+    name: str,
+    data: dict,
+    root: Path,
+    prepared: dict | None = None,
+) -> dict:
     snapshot = state(con, root)
     current = snapshot["phase"]
     pid, number = current["phase_revision_id"], current["phase_no"]
@@ -23,6 +30,12 @@ def transition(con: sqlite3.Connection, actor: int, name: str, data: dict, root:
             "WHERE phase_revision_id=?",
             (now(), now(), pid),
         )
+        if number == 4:
+            from discovery.application.specification import compile_spec
+
+            spec = compile_spec(con, actor, prepared, root, final=True)
+            con.execute("UPDATE discovery_run SET run_status='finalized',dt_modified=?", (now(),))
+            return {"phase": 4, "status": "finalized", "spec": spec}
         pending = con.execute(
             "SELECT * FROM phase_revision WHERE phase_no=? AND revision_status='pending' "
             "ORDER BY revision_no DESC LIMIT 1",
@@ -41,7 +54,18 @@ def transition(con: sqlite3.Connection, actor: int, name: str, data: dict, root:
         # A cause must resolve to durable knowledge; free prose alone is not a reference.
         kind, ref = data["cause"].split(":", 1)
         require(
-            kind in ("question", "need", "lane", "artifact"),
+            kind
+            in (
+                "question",
+                "need",
+                "lane",
+                "artifact",
+                "defeater",
+                "decision",
+                "claim",
+                "obligation",
+                "experiment",
+            ),
             "INVALID_ARGUMENT",
             "Unsupported regression cause kind.",
         )

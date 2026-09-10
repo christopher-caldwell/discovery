@@ -5,7 +5,16 @@ from discovery.adapters.filesystem.artifacts import capture
 from discovery.adapters.git.repository import baseline
 from discovery.adapters.sqlite.command_store import CommandStore
 from discovery.adapters.sqlite.connection import upgrade_schema
-from discovery.application import claims, investigation, sources
+from discovery.application import (
+    adversarial,
+    agents,
+    claims,
+    design,
+    experiments,
+    investigation,
+    sources,
+    specification,
+)
 from discovery.application.initialization import initialize
 from discovery.application.phases import transition
 from discovery.application.planning import write
@@ -19,12 +28,9 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
     root = root.resolve()
     data = dict(data)
     prepared = {}
+    if name == "experiment.exec":
+        return experiments.execute(root, data, request, actor, session)
     if name == "run.init":
-        require(
-            data["subagents"] == "disabled",
-            "FEATURE_NOT_IMPLEMENTED",
-            "Subagent execution is deferred; this slice supports explicit disabled mode only.",
-        )
         path = Path(data.pop("input")).resolve()
         content = path.read_bytes()
         require(content.strip(), "INVALID_ARGUMENT", "Request file must not be empty.")
@@ -34,7 +40,16 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         data["source"] = str(source_root)
         prepared["source"] = baseline(source_root, root, set(POLICY["source_excluded_directories"]))
         prepared["artifact"] = capture(root, content)
-    elif name in ("research.record", "plan.review", "argument.verify"):
+    elif name in (
+        "research.record",
+        "plan.review",
+        "argument.verify",
+        "challenge.complete",
+        "defeater.defeat",
+        "agent.complete",
+        "agent.finding",
+        "group.reconcile",
+    ):
         path = Path(data.pop("report")).resolve()
         content = path.read_bytes()
         require(content.strip(), "INVALID_ARGUMENT", "Report must not be empty.")
@@ -58,6 +73,18 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
             set(snapshot["policy"]["source_excluded_directories"]),
         )
         data["baseline"] = prepared["source"]
+    if name in ("spec.draft", "spec.revise"):
+        snapshot = query(root, "spec.snapshot")
+        narrative = Path(data.pop("narrative")).read_bytes()
+        require(narrative.strip(), "INVALID_ARGUMENT", "Technical narrative must not be empty.")
+        data["narrative_sha256"] = digest(narrative)
+        prepared = specification.prepare(root, snapshot, narrative)
+    elif name == "phase.advance":
+        snapshot = query(root, "spec.snapshot")
+        if snapshot["phase"]["phase_no"] == 4:
+            prepared = specification.prepare(
+                root, snapshot, specification.final_narrative(snapshot, root), final=True
+            )
     store = CommandStore(root)
 
     def operation(con: sqlite3.Connection, aid: int) -> dict:
@@ -65,12 +92,22 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
             return initialize(con, aid, data, prepared["artifact"], prepared["source"])
         if name == "run.upgrade":
             require(
-                con.execute("PRAGMA user_version").fetchone()[0] == 3,
+                con.execute("PRAGMA user_version").fetchone()[0] in (3, 4),
                 "INVALID_STATE",
-                "Run already uses schema 4.",
+                "Run already uses schema 5.",
             )
             upgrade_schema(con)
-            return {"schema_version": 4}
+            return {"schema_version": 5}
+        if name.startswith(("agent.", "group.", "finding.")):
+            return agents.write(con, aid, name, data, prepared, root)
+        if name.startswith(("strategy.", "decision.", "obligation.", "requirement.")):
+            return design.write(con, aid, name, data, root)
+        if name.startswith("experiment."):
+            return experiments.write(con, aid, name, data, root)
+        if name.startswith(("challenge.", "defeater.")):
+            return adversarial.write(con, aid, name, data, prepared, root)
+        if name in ("spec.draft", "spec.revise"):
+            return specification.compile_spec(con, aid, prepared, root)
         if name in ("artifact.capture", "source.refresh"):
             return sources.write(con, aid, name, data, prepared, root)
         if name.startswith(("evidence.", "claim.", "argument.")):
@@ -84,9 +121,16 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         ):
             return investigation.write(con, aid, name, data, prepared, root)
         if name.startswith("phase."):
-            return transition(con, aid, name, data, root)
+            return transition(con, aid, name, data, root, prepared)
         return write(con, aid, name, data, prepared)
 
     return store.execute(
-        name, request, data, actor, session, operation, initialize=name == "run.init"
+        name,
+        request,
+        data,
+        actor,
+        session,
+        operation,
+        initialize=name == "run.init",
+        guard=lambda con, replay: agents.guard(con, name, data, actor, replay),
     )

@@ -60,3 +60,29 @@ builds passed. The isolated wheel reports 0.2.0/schema 4 and contains the migrat
 resource. The refreshed system editable package metadata and both CLI entry
 points agree. Direct and installed cached skills match the checkout, and the
 personal marketplace reports Discovery installed and enabled.
+
+
+## Four-phase completion iteration — release unchanged at 0.2.0, schema 5
+
+The full suite passed **84 tests**. The new coverage includes complete
+1→2→3→4→finalized traversal, immutable final replay and export, draft/checklist
+staleness, final compilation rollback on changed adversarial context, evidenced
+defeaters and explicit regression, proof links, real macOS sandbox execution,
+original-source write denial, offline network denial, timeout result capture and interrupted execution with
+no duplicate process, replacement attempts, lease expiry/reclaim/stale tokens,
+private replica context, unique findings, failed-replica denominator retention,
+and overlap requirements in both Phases 2 and 4. Both schema 3 and schema 4
+migration paths preserve history; injected upgrade failures roll back schema and
+audit together.
+
+The sandbox positive test runs actual system Python, writes only the copied
+fixture, captures results, and satisfies a linked proof obligation. No external
+vendor or production environment is used. Skills/plugin validation, Ruff checks,
+and wheel/source builds passed. The base package, CLI, and plugin release remain
+0.2.0 at the user's request; schema identity is checked separately.
+
+Remaining validation: real-project research quality, long-running experiment
+resource usage, large ledgers, and sandbox adapters for other operating systems.
+The CLI's actor attribution and isolated context are cooperative boundaries, not
+protection from a filesystem owner. Freeform narratives and reports still require
+actual semantic scrutiny; procedural success does not establish technical truth.

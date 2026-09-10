@@ -3,9 +3,8 @@
 Discovery follows the Taskledger installation workflow described in
 `task_ledger/docs/AI_ORCHESTRATED_TOOL_INSTALLATION.md`: a deterministic CLI,
 a direct Codex skill, a personal marketplace plugin, and private per-project
-runtime state. Worker profiles are deferred until Discovery supports leased
-investigators; installation must not create profiles that imply unavailable
-agent isolation or permissions.
+runtime state. Leased investigators receive per-run identities and immutable
+contexts; installation does not create global worker profiles.
 
 ## Installation surfaces
 
@@ -46,7 +45,7 @@ personal plugin source:
   /Users/christophercaldwell/plugins/discovery
 
 installed plugin cache:
-  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910165725
+  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910173432
 
 plugin identifier:
   discovery@personal (installed and enabled)
@@ -66,7 +65,7 @@ skills/discovery/SKILL.md       metadata.version
 .codex-plugin/plugin.json      version
 ```
 
-The current release is `0.2.0`; its SQLite schema is version `4`. Release version
+The current release is `0.2.0`; its SQLite schema is version `5`. Release version
 and schema version are different contracts. Existing schema versions other than
 3 are rejected, never reset. A local plugin cache suffix such as
 `+codex.20260910162056` changes cache identity, not CLI or database semantics.
@@ -115,7 +114,7 @@ python3 -m pip show discovery-cli
 For this pip-owned installation the two version commands must return:
 
 ```json
-{"ok":true,"result":{"schema_version":4,"version":"0.2.0"}}
+{"ok":true,"result":{"schema_version":5,"version":"0.2.0"}}
 ```
 
 For a uv-owned installation, run the module/metadata checks with that tool
@@ -186,8 +185,8 @@ authorization controls whether to initialize a run. Installation alone is not a
 request to begin research in every repository.
 
 The skill asks about subagents for a new run when that preference is missing.
-Only disabled mode is implemented in this release. No global or repository
-worker profiles are installed until leased execution is available.
+Disabled, partitioned, and overlap modes are implemented. Workers receive
+isolated contexts and leased identities; no global worker profiles are installed.
 
 ## 6. Verify and hand off
 
@@ -201,7 +200,7 @@ uv run ruff check src tests
 uv run ruff format --check src tests
 ```
 
-The installation change passed **69 tests**, both skill/plugin validators, and
+The prior Phase 2 installation passed **69 tests**, both skill/plugin validators, and
 all executable, package-metadata, direct-copy, and cached-copy checks. The
 personal plugin list showed Discovery installed/enabled and retained Taskledger.
 
@@ -209,3 +208,7 @@ Start a new Codex task to pick up the installed skill/plugin snapshot. A suitabl
 first request is: “Use the Discovery skill and run `discovery --version`; do not
 initialize a run.” The installer can verify files and plugin registration in the
 current task but cannot prove fresh-task skill selection until that task starts.
+
+During iteration, retain the base release number (currently 0.2.0). Schema revisions
+identify actual storage changes and require explicit upgrades. The plugin helper
+refreshes cache metadata without incrementing the base release.

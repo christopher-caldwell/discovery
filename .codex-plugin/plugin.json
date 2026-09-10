@@ -2,15 +2,23 @@
   "name": "discovery",
   "version": "0.2.0",
   "description": "Operate deterministic, evidence-backed discovery and research planning with the local Discovery CLI.",
-  "author": {"name": "Christopher Caldwell"},
+  "author": {
+    "name": "Christopher Caldwell"
+  },
   "skills": "./skills/",
   "interface": {
     "displayName": "Discovery",
     "shortDescription": "Resolve intent and build durable research plans.",
-    "longDescription": "Guide Discovery's local CLI to capture request assertions, resolve questions, plan research lanes, record search provenance, review exact plan snapshots, and resume audited state. This release supports Phases 1 and 2, including claim admissibility, lane closure, and entry into Phase 3; later-phase completion is unavailable.",
+    "longDescription": "Guide the local Discovery CLI through four audited discovery phases, isolated investigation and experiments, adversarial review, and structured specification exports.",
     "developerName": "Christopher Caldwell",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
-    "defaultPrompt": ["Resume this Discovery run and explain its blocking questions and next actions.", "Use Discovery to clarify this request and build an evidence-backed research plan."]
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Resume this Discovery run and explain its blocking questions and next actions.",
+      "Use Discovery to clarify this request and build an evidence-backed research plan."
+    ]
   }
 }

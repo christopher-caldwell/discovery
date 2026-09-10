@@ -1,6 +1,6 @@
 POLICY = {
-    "policy_version": "phase2-v1",
-    "schema_version": 4,
+    "policy_version": "discovery-v1",
+    "schema_version": 5,
     "source_excluded_directories": [
         ".git",
         ".discovery",
@@ -58,6 +58,6 @@ POLICY = {
         "maintainability",
         "evidence_freshness",
     ],
-    "assurance_scoring_model": "deferred-fail-closed",
+    "assurance_scoring_model": "structural-coverage-v1",
     "experiment_safety_policy": "disposable-sandbox-only",
 }

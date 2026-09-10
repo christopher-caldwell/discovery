@@ -53,7 +53,9 @@ def initialize(
         run_title=data["title"],
         current_phase_revision_id=phases[0],
         input_artifact_id=ticket["id"],
-        config_json=canonical(POLICY),
+        subagents_enabled=int(data["subagents"] != "disabled"),
+        subagent_mode=data["subagents"] if data["subagents"] != "disabled" else None,
+        config_json=canonical({**POLICY, "subagent_mode": data["subagents"]}),
         dt_created=now(),
         dt_modified=now(),
     )

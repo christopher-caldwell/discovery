@@ -1,5 +1,6 @@
 """Pure policy over a normalized snapshot; semantic judgments are recorded inputs."""
 
+from discovery.domain.completion import adversarial_violations, design_violations
 from discovery.domain.investigation import phase_two_violations
 
 
@@ -41,12 +42,10 @@ def phase_violations(state: dict) -> list[dict]:
             fail("CRITICAL_ASSUMPTION", a["assumption_text"])
     if phase == 2:
         return failures + phase_two_violations(state)
-    if phase != 1:
-        fail(
-            "PHASE_NOT_IMPLEMENTED",
-            f"Phase {phase} completion is not implemented; advancement is disabled.",
-        )
-        return failures
+    if phase == 3:
+        return failures + design_violations(state)
+    if phase == 4:
+        return failures + adversarial_violations(state)
     revision = state["phase"]["phase_revision_id"]
     surfaces = [
         s

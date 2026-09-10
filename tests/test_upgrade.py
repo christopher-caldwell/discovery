@@ -13,8 +13,8 @@ from discovery.domain.errors import DiscoveryError
 from discovery.domain.policy import POLICY
 
 
-@pytest.fixture
-def legacy(tmp_path, monkeypatch):
+@pytest.fixture(params=[3, 4])
+def legacy(tmp_path, monkeypatch, request):
     source = tmp_path / "source"
     source.mkdir()
     ticket = tmp_path / "ticket.txt"
@@ -25,9 +25,13 @@ def legacy(tmp_path, monkeypatch):
         Path(command_store.__file__)
         .with_name("ddl.sql")
         .read_text()
-        .split("ALTER TABLE research_lane ADD COLUMN")[0]
+        .split(
+            "ALTER TABLE research_lane ADD COLUMN"
+            if request.param == 3
+            else "ALTER TABLE technical_spec_revision ADD COLUMN"
+        )[0]
     )
-    schema += "PRAGMA user_version = 3;\n"
+    schema += f"PRAGMA user_version = {request.param};\n"
 
     def old_schema(con):
         statement = ""
@@ -39,7 +43,7 @@ def legacy(tmp_path, monkeypatch):
 
     with monkeypatch.context() as patch:
         patch.setattr(command_store, "initialize_schema", old_schema)
-        patch.setitem(POLICY, "schema_version", 3)
+        patch.setitem(POLICY, "schema_version", request.param)
         patch.setitem(POLICY, "policy_version", "milestone-1")
         commands.execute(
             root,
@@ -54,11 +58,11 @@ def legacy(tmp_path, monkeypatch):
             actor,
             uid(),
         )
-    return root, actor
+    return root, actor, request.param
 
 
 def test_explicit_upgrade_preserves_history_and_replays(legacy):
-    root, actor = legacy
+    root, actor, version = legacy
     before = query(root, "audit.verify")
     with pytest.raises(DiscoveryError, match="run upgrade"):
         query(root, "resume")
@@ -69,7 +73,7 @@ def test_explicit_upgrade_preserves_history_and_replays(legacy):
     after = query(root, "audit.verify")
     assert after["valid"] and after["event_count"] == before["event_count"] + 1
     assert query(root, "resume")["title"] == "Legacy"
-    assert query(root, "resume")["policy"]["schema_version"] == 3
+    assert query(root, "resume")["policy"]["schema_version"] == version
     con = connect(root / "discovery.sqlite")
     assert (
         con.execute("SELECT event_hash FROM event_log WHERE event_log_id=1").fetchone()[0]
@@ -79,7 +83,7 @@ def test_explicit_upgrade_preserves_history_and_replays(legacy):
 
 
 def test_failed_upgrade_rolls_back_schema_and_audit(legacy, monkeypatch):
-    root, actor = legacy
+    root, actor, version = legacy
     original = commands.upgrade_schema
 
     def broken(con):
@@ -90,7 +94,9 @@ def test_failed_upgrade_rolls_back_schema_and_audit(legacy, monkeypatch):
     with pytest.raises(RuntimeError):
         commands.execute(root, "run.upgrade", {}, uid(), actor, uid())
     con = connect(root / "discovery.sqlite")
-    assert con.execute("PRAGMA user_version").fetchone()[0] == 3
-    assert "closure_status" not in {r[1] for r in con.execute("PRAGMA table_info(research_lane)")}
+    assert con.execute("PRAGMA user_version").fetchone()[0] == version
+    assert "structure_sha256" not in {
+        r[1] for r in con.execute("PRAGMA table_info(technical_spec_revision)")
+    }
     assert verify(con, root)["valid"]
     con.close()

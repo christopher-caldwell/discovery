@@ -23,7 +23,11 @@ def write(
     con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: dict, root: Path
 ) -> dict:
     run = con.execute("SELECT * FROM discovery_run").fetchone()
-    require(run["current_phase_no"] == 2, "WRONG_PHASE", "Claim/evidence work requires Phase 2.")
+    require(
+        run["current_phase_no"] == 2 or name in ("evidence.create", "evidence.retract"),
+        "WRONG_PHASE",
+        "Claim/evidence work requires Phase 2.",
+    )
     if name == "evidence.create":
         lane = active_lane(con, data["lane"])
         artifact = resolve(con, "artifact", data["artifact"])
@@ -55,13 +59,20 @@ def write(
             observation=data["observation"],
             extracted_by_actor_id=actor,
         )
-        reopen(con, lane["research_lane_id"])
+        if run["current_phase_no"] == 2:
+            reopen(con, lane["research_lane_id"])
         return result
     if name == "evidence.retract":
         evidence = resolve(con, "evidence", data["ref"])
         require(evidence["evidence_status"] == "active", "INVALID_STATE", "Evidence is not active.")
         con.execute(
             "UPDATE evidence SET evidence_status='retracted',dt_modified=? WHERE evidence_id=?",
+            (now(), evidence["evidence_id"]),
+        )
+        con.execute(
+            "UPDATE defeater SET defeater_status='open',dt_modified=? WHERE defeater_id IN "
+            "(SELECT defeater_id FROM defeater_evidence WHERE evidence_id=? "
+            "AND relationship='refutes_challenge') AND defeater_status='defeated'",
             (now(), evidence["evidence_id"]),
         )
         con.execute(

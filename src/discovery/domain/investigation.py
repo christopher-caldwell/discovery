@@ -178,11 +178,6 @@ def phase_two_violations(state: dict) -> list[dict]:
         failures.append(
             {"code": "LANE_HAS_OPEN_LEADS", "message": "Pending research leads remain."}
         )
-    if state["run"]["subagents_enabled"]:
-        failures.append(
-            {
-                "code": "CONSENSUS_INCOMPLETE",
-                "message": "Leased/overlap execution is not implemented.",
-            }
-        )
-    return failures
+    from discovery.domain.agents import group_violations
+
+    return failures + group_violations(state, 2)

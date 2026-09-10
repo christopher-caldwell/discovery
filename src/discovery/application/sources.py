@@ -15,7 +15,7 @@ def write(
 ) -> dict:
     run = con.execute("SELECT * FROM discovery_run").fetchone()
     require(
-        run["current_phase_no"] in (1, 2),
+        run["current_phase_no"] in (1, 2) or name == "artifact.capture",
         "WRONG_PHASE",
         "Source maintenance requires Phase 1 or 2.",
     )
@@ -56,6 +56,12 @@ def write(
                 (now(), e["evidence_id"]),
             )
             con.execute(
+                "UPDATE defeater SET defeater_status='open',dt_modified=? WHERE defeater_id IN "
+                "(SELECT defeater_id FROM defeater_evidence WHERE evidence_id=? "
+                "AND relationship='refutes_challenge') AND defeater_status='defeated'",
+                (now(), e["evidence_id"]),
+            )
+            con.execute(
                 "UPDATE argument SET counter_status='open',dt_modified=? "
                 "WHERE resolution_evidence_id=?",
                 (now(), e["evidence_id"]),
@@ -77,7 +83,9 @@ def write(
             "invalidated_claim_ids": sorted(claim_ids),
         }
     require(
-        run["current_phase_no"] == 2, "WRONG_PHASE", "Evidence artifact capture requires Phase 2."
+        run["current_phase_no"] in (2, 3, 4),
+        "WRONG_PHASE",
+        "Evidence artifact capture requires Phase 2.",
     )
     values = {}
     if data["source_backed"]:

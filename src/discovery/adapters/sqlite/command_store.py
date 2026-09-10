@@ -26,6 +26,7 @@ class CommandStore:
         operation: Callable[[sqlite3.Connection, int], dict],
         *,
         initialize: bool = False,
+        guard: Callable[[sqlite3.Connection, bool], None] | None = None,
     ) -> dict:
         request, session = uuid(request), uuid(session)
         actor = {**actor, "uuid": uuid(actor["uuid"])}
@@ -41,9 +42,9 @@ class CommandStore:
                 initialize_schema(con)
             else:
                 require(
-                    version == 4 or (version == 3 and name == "run.upgrade"),
+                    version == 5 or (version in (3, 4) and name == "run.upgrade"),
                     "SCHEMA_VERSION_UNSUPPORTED",
-                    "Schema 4 required; use run upgrade for schema 3.",
+                    "Schema 5 required; use run upgrade for schema 3 or 4.",
                 )
             exists = con.execute("SELECT * FROM discovery_run").fetchone()
             if exists:
@@ -57,6 +58,8 @@ class CommandStore:
             prior = con.execute(
                 "SELECT * FROM event_log WHERE command_uuid=?", (request,)
             ).fetchone()
+            if guard:
+                guard(con, bool(prior))
             if prior:
                 require(
                     prior["command_name"] == name and prior["command_input_sha256"] == input_hash,

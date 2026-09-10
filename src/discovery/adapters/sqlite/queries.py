@@ -57,6 +57,19 @@ def state(con: sqlite3.Connection, root: Path) -> dict:
         "implementation_strategy",
         "technical_decision",
         "experiment",
+        "technical_decision_claim",
+        "proof_obligation_evidence",
+        "proof_obligation_experiment",
+        "experiment_artifact",
+        "adversarial_check",
+        "defeater_evidence",
+        "defeater_claim",
+        "defeater_decision",
+        "technical_spec_revision",
+        "assurance_score",
+        "technical_requirement",
+        "investigation_group",
+        "investigator_finding",
     ):
         result[table] = [dict(r) for r in con.execute(f"SELECT * FROM {table}")]
     result["plan_sha256"] = digest(canonical(plan(con)).encode())

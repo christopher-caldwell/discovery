@@ -175,7 +175,7 @@ def test_real_phase2_to_phase3_path(investigation):
     assert env["call"]("phase", "advance")["result"]["phase"] == 3
     assert (
         env["call"]("phase", "advance", expected=2)["error"]["details"]["violations"][0]["code"]
-        == "PHASE_NOT_IMPLEMENTED"
+        == "STRATEGY_SELECTION_REQUIRED"
     )
     assert env["call"]("audit", "verify")["result"]["valid"]
 

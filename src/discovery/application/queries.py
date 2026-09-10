@@ -10,16 +10,26 @@ from discovery.domain.gates import phase_violations
 from discovery.domain.investigation import claim_violations, lane_violations
 
 
-def query(root: Path, name: str, ref: str | None = None) -> dict | list:
+def query(
+    root: Path,
+    name: str,
+    ref: str | None = None,
+    *,
+    scope: dict | None = None,
+    actor_uuid: str | None = None,
+) -> dict | list:
     con = connect(root / "discovery.sqlite")
     try:
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
         require(
-            con.execute("PRAGMA user_version").fetchone()[0] == 4
-            or (name == "audit.verify" and con.execute("PRAGMA user_version").fetchone()[0] == 3),
+            con.execute("PRAGMA user_version").fetchone()[0] == 5
+            or (
+                name == "audit.verify"
+                and con.execute("PRAGMA user_version").fetchone()[0] in (3, 4)
+            ),
             "SCHEMA_VERSION_UNSUPPORTED",
-            "Schema 4 required; use run upgrade for schema 3.",
+            "Schema 5 required; use run upgrade for schema 3 or 4.",
         )
         require(
             con.execute("SELECT 1 FROM discovery_run").fetchone(),
@@ -32,6 +42,30 @@ def query(root: Path, name: str, ref: str | None = None) -> dict | list:
         require(
             audit["valid"], "AUDIT_INTEGRITY_FAILURE", "Run integrity verification failed.", **audit
         )
+        if scope and scope.get("agent_run"):
+            require(
+                name == "resume",
+                "AGENT_SCOPE_REQUIRED",
+                "Isolated investigators may read only their scoped resume packet.",
+            )
+            from discovery.application.agents import read
+
+            return read(con, scope, root)
+        if actor_uuid:
+            active = con.execute(
+                (
+                    "SELECT 1 FROM agent_run a JOIN actor USING(actor_id) JOIN "
+                    "investigation_group g USING(investigation_group_id) WHERE "
+                    "actor.actor_uuid=? AND g.group_status='open' AND a.run_status IN "
+                    "('running','completed')"
+                ),
+                (actor_uuid,),
+            ).fetchone()
+            require(
+                not active,
+                "AGENT_SCOPE_REQUIRED",
+                "Use --agent-run and --lease for isolated context.",
+            )
         if name.endswith(".list"):
             kind = name.split(".")[0]
             table, prefix = ENTITIES[kind]
@@ -43,6 +77,39 @@ def query(root: Path, name: str, ref: str | None = None) -> dict | list:
             packet = plan(con)
             return {"plan_sha256": digest(canonical(packet).encode()), "context": packet}
         snapshot = state(con, root)
+        if name == "spec.snapshot":
+            return snapshot
+        if name == "assurance.calculate":
+            from discovery.domain.completion import assurance
+
+            return assurance(snapshot)
+        if name == "spec.export":
+            import json
+
+            from discovery.adapters.filesystem.artifacts import atomic_write
+            from discovery.domain.completion import current_spec
+
+            spec = current_spec(snapshot)
+            require(spec is not None, "SPEC_REQUIRED", "Compile a spec first.")
+            bundle = json.loads(spec["bundle_json"])
+            folder = root / "exports" / spec["technical_spec_revision_uuid"]
+            for filename, a in bundle.items():
+                path = folder / filename
+                require(
+                    not folder.is_symlink()
+                    and not path.is_symlink()
+                    and folder.resolve().is_relative_to(root.resolve()),
+                    "EXPORT_CONFLICT",
+                    "Export path contains a symlink.",
+                )
+                content = (root / a["storage_path"]).read_bytes()
+                require(
+                    not path.exists() or path.read_bytes() == content,
+                    "EXPORT_CONFLICT",
+                    "Export file already has different content.",
+                )
+                atomic_write(path, content)
+            return {"directory": str(folder), "files": [str(folder / n) for n in bundle]}
         if name in ("lane.check", "claim.check"):
             kind = name.split(".")[0]
             record = resolve(con, kind, ref)
@@ -98,6 +165,22 @@ def query(root: Path, name: str, ref: str | None = None) -> dict | list:
                         "research-need answer",
                         "source refresh",
                     ]
+            if run["current_phase_no"] == 3:
+                next_actions += [
+                    "strategy create/select/reject",
+                    "decision create/accept/reject",
+                    "obligation create/satisfy",
+                    "experiment plan/exec/finish",
+                    "requirement create",
+                    "spec draft",
+                ]
+            if run["current_phase_no"] == 4:
+                next_actions += [
+                    "challenge initialize/complete",
+                    "defeater create/confirm/defeat",
+                    "spec revise",
+                    "assurance calculate",
+                ]
             if not violations:
                 next_actions.append("phase advance")
         return {
@@ -119,6 +202,12 @@ def query(root: Path, name: str, ref: str | None = None) -> dict | list:
             "evidence": snapshot["evidence"],
             "arguments": snapshot["argument"],
             "research_methods": snapshot["research_method"],
+            "strategies": snapshot["implementation_strategy"],
+            "decisions": snapshot["technical_decision"],
+            "requirements": snapshot["technical_requirement"],
+            "experiments": snapshot["experiment"],
+            "specifications": snapshot["technical_spec_revision"],
+            "adversarial_checks": snapshot["adversarial_check"],
             "proof_obligations": snapshot["proof_obligation"],
             "defeaters": snapshot["defeater"],
             "legal_next_actions": next_actions,

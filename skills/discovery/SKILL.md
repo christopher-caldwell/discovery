@@ -11,7 +11,7 @@ Use `discovery` for durable workflow state. The model interprets meaning; the CL
 
 ## Start or resume
 
-First run `discovery --version`. This skill targets release 0.2.0 and schema 4. If the executable is absent or incompatible, report the mismatch; do not improvise SQL or silently install a different tool.
+First run `discovery --version`. This skill targets release 0.2.0 and schema 5. If the executable is absent or incompatible, report the mismatch; do not improvise SQL or silently install a different tool.
 
 For an existing run, begin with:
 
@@ -21,7 +21,7 @@ discovery --json --run /absolute/path/to/run resume
 
 Use its current phase, gate violations, and legal next actions. Read its immutable request artifact when needed. SQLite state is authoritative; do not reconstruct current state from prior chat or replay the event log yourself. If multiple run directories are plausible, inspect their statuses and ask which to continue when intent remains ambiguous.
 
-For a new run, establish the request file, source directory, and subagent preference. Ask about subagents if the user has not specified a preference. This release supports only `disabled`; explain that partitioned/overlap execution is unavailable if requested. Do not launch unmanaged reviewers to imitate supported agent execution.
+For a new run, establish the request file, source directory, and subagent preference. Ask about subagents if the user has not specified a preference. Use `disabled`, `partitioned`, or `overlap` as requested. Ask whether overlap is desired when the user enables agents without choosing a mode. The CLI manages investigator state; the assistant launches actual workers after dispatch.
 
 Use `<source>/.discovery/runs/<generated-uuid>` unless the user selects another location. Ensure `.discovery/` is ignored before initialization; preserve existing ignore rules. Creating authorized Discovery state requires no additional generic branch confirmation: Discovery does not modify source files or create implementation worktrees. Do not initialize a run merely to test installation.
 
@@ -83,10 +83,34 @@ Use `research-need answer` after all covering lanes close. Phase 2 advances to P
 
 `source refresh --reason ...` records a new baseline. It retracts evidence captured from the replaced baseline and reopens affected/dependent lanes, claims, and need answers. External snapshots are retained. Recapture source evidence and record new arguments as needed; refresh does not silently bless old evidence. This version invalidates by source baseline, not individual changed lines.
 
-Schema 3 runs require the explicit transactional `run upgrade` command using ordinary mutation identity flags. Upgrade preserves history and the run's frozen policy, but a Phase 1 plan review may become stale after the added fields. Never reset a run to solve a version mismatch.
+Schema 3/4 runs require the explicit transactional `run upgrade` command using ordinary mutation identity flags. Upgrade preserves history and the run's frozen policy, but a Phase 1 plan review may become stale after the added fields. Never reset a run to solve a version mismatch.
 
-## Current boundaries
+## Design, experiments, and adversarial refinement
 
-Phases 1 and 2 can complete and enter Phase 3. Phase 3–4 completion, leased/overlap agents, experiments, final rendering, and Taskledger handoff remain deferred. On `PHASE_NOT_IMPLEMENTED`, explain the boundary and preserve the run. Do not synthesize a finalized-spec claim from an incomplete run or edit state to bypass a gate.
+Phase 3 selects one strategy, records accepted decisions traced to admissible claims, and creates impact-preserving proof obligations. Use `strategy create/select/reject`, `decision create/accept/reject`, `obligation create/attach-evidence/attach-experiment/satisfy/fail/block/not-applicable`, and `requirement create`. Requirements link an answered need, a decision, acceptance criteria, and a verification plan. Do not disguise unresolved decisions or proofs as contextual to pass gates.
 
-Source drift blocks advancement. Audit corruption requires investigation, not automatic database repair. Use `audit verify` for integrity checks. Never write `discovery.sqlite` directly, alter captured artifacts, erase history, or run production mutations. Independent source edits, external messages, deployments, and installation changes require authorization appropriate to the user's actual task; a Discovery request alone does not authorize them.
+`experiment plan` records a hypothesis and procedure. `experiment exec --command '["/usr/bin/python3","-c","print(123)"]'` copies the source baseline and executes in a macOS Seatbelt sandbox. Writes are limited to the copy and networking is denied. This is not a VM or protection against credential reads; the process can read filesystem content. Unsupported platforms fail closed. Do not execute untrusted arbitrary programs on the assumption that the copy alone isolates them. Additional output files stay in scratch and must be captured explicitly when needed as durable evidence.
+
+Inspect captured exit code, stdout/stderr, hashes, and limitations, then record `experiment finish --outcome ... --conclusion ... --limitations ...`. A zero exit does not prove the hypothesis. Execution has separately audited reservation and receipt-registration transactions. Retry the same request to recover a recorded receipt, never to rerun. On `EXPERIMENT_INTERRUPTED`, inspect the existing scratch attempt, abort it explicitly, and create a replacement. Do not hide failed attempts or delete their records.
+
+Write substantive technical narrative and use `spec draft --narrative FILE`. Structured changes stale the draft. Phase 3 advances only after traceability and proof gates pass.
+
+In Phase 4, use `challenge initialize` to create the configured checks against the exact draft. Try to break the design; submit actual reports with `challenge complete`. Findings need linked `defeater create` records targeting a claim or decision with evidence. `defeater confirm` requires explicit regression before repair; `defeater defeat` needs distinct active resolution evidence and a report. Only contextual risks can be accepted. Revision with `spec revise` requires a fresh set of checks; prior defeaters are not erased.
+
+`assurance calculate` reports procedural coverage, not correctness probabilities. Scores never override gates. Phase 4 `phase advance` atomically compiles final artifacts, records scores, and finalizes the run. `spec export` materializes `technical-spec.md`, `discovery-summary.md`, `evidence-manifest.json`, and `handoff.json`. It does not submit work to Taskledger. Describe remaining limitations honestly even when all structural gates pass.
+
+## Leased investigators
+
+For Phase 2 use `group dispatch --lane L-001 --count N`; Phase 4 omits `--lane` and targets the current draft. Partitioned groups contain one investigator, overlap groups 2–8. Each replica must receive an actor UUID distinct from the orchestrator and other replicas, an independent session, and a fresh random lease of at least 32 characters. Do not put the raw lease into authored reports or shared prompts; give it only to its worker.
+
+Start with global `--lease TOKEN` before `agent start AR-001`. The CLI stores only its hash. Give each worker `--agent-run AR-001 --lease TOKEN resume` and its immutable context. Do not share sibling findings or your preferred conclusion. Workers submit `agent finding` with `support`, `refute`, `not_seen`, or `unique`, source/report provenance, and impact; Phase 4 accepts challenges or `not_seen`. Use `agent heartbeat` during long read-only work and `agent complete --outcome ... --report FILE` at the end. Expired leases require `agent reclaim` with a new token; stale tokens cannot write.
+
+Workers submit isolated findings rather than canonical mutations. Scope is enforced through these CLI interfaces, not authenticated against someone deliberately inventing another actor or reading the shared filesystem directly. Keep workers on their provided context and source scope.
+
+Only after every requested replica completes may the orchestrator run `finding reconcile` and `group reconcile`. Substantive findings become leads or defeaters; `not_seen` is not a negative vote. Imported reports are secondary evidence requiring direct corroboration and semantic verification. A credible material refutation contests the claim regardless of supporting counts. If a replica fails, supersede the group with a reason and dispatch a new group; do not reduce the denominator to claim consensus.
+
+## Boundaries and recovery
+
+All four phases support traversal through finalization. Explicit assumption/withdrawal conveniences, additional OS experiment adapters, and direct Taskledger ingestion remain extensions. The release number remains unchanged during development; check schema compatibility separately.
+
+Source drift blocks advancement. Regress to Phase 2 (or Phase 1) before refresh and revalidation. Audit corruption requires investigation, not automatic repair. Never write the database directly, alter captured artifacts, erase history, bypass phase gates, or run production mutations. A finalized run rejects new mutations; preserve it as an immutable research package.

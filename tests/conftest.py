@@ -8,7 +8,7 @@ from discovery.domain.encoding import uid
 
 
 @pytest.fixture
-def run(tmp_path: Path, capsys):
+def run(tmp_path: Path, capsys, request):
     source = tmp_path / "source"
     source.mkdir()
     (source / "app.txt").write_text("baseline")
@@ -17,13 +17,13 @@ def run(tmp_path: Path, capsys):
     root = tmp_path / "run"
     actor = uid()
 
-    def call(*args, request=None, expected=0):
+    def call(*args, request=None, expected=0, identity=None):
         argv = [
             "--json",
             "--run",
             str(root),
             "--actor-id",
-            actor,
+            identity or actor,
             "--actor-name",
             "Test investigator",
             "--actor-kind",
@@ -50,7 +50,7 @@ def run(tmp_path: Path, capsys):
         "--source",
         str(source),
         "--subagents",
-        "disabled",
+        getattr(request, "param", "disabled"),
     )
     initial = call(*init_args, request=initial_request)
     return {

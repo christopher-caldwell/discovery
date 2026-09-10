@@ -43,3 +43,22 @@ def capture(root: Path, data: bytes) -> dict:
             if os.path.exists(temp):
                 os.unlink(temp)
     return {"artifact_sha256": sha, "byte_size": len(data), "storage_path": str(relative)}
+
+
+def atomic_write(path: Path, data: bytes) -> None:
+    ensure_directory(path.parent)
+    fd, temp = tempfile.mkstemp(dir=path.parent, prefix=".pending-")
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp, path)
+        descriptor = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    finally:
+        if os.path.exists(temp):
+            os.unlink(temp)

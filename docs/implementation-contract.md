@@ -1,6 +1,6 @@
 # Current implementation contract — Discovery 0.2
 
-This document and runtime schema 4 describe the implemented system. The unchanged `discovery-design-package/` is the historical handoff and future architectural target. Phases 1 and 2 can complete; Phases 3 and 4 still fail closed.
+This document and runtime schema 5 describe the implemented system. The unchanged `discovery-design-package/` is the historical handoff and future architectural target. All four phases can complete, including finalization; see the completion workflow for operating details.
 
 ## Architecture and transaction authority
 
@@ -14,9 +14,9 @@ Logical input and actor identity determine idempotency, with canonical key order
 
 ## Persistence, artifacts, and upgrade
 
-Schema 4 preserves the handoff tables and adds normalized lane closure state, lane answers/limitations/question linkage, need answers, verification-report linkage, and counterargument resolutions. It relaxes source URI/revision uniqueness: dirty working-tree snapshots and returns to earlier revisions can share a Git HEAD. Exactly one baseline per URI remains active. New fields have explicit checks and foreign keys where applicable.
+Schema 5 preserves the handoff tables and adds normalized lane closure state, lane answers/limitations/question linkage, need answers, verification-report linkage, and counterargument resolutions. It relaxes source URI/revision uniqueness: dirty working-tree snapshots and returns to earlier revisions can share a Git HEAD. Exactly one baseline per URI remains active. New fields have explicit checks and foreign keys where applicable.
 
-Schema 3 runs are not silently migrated. `run upgrade` verifies their existing audit/state, applies the additive migration under the same command transaction, then appends an event. Historical events and artifacts remain byte-identical. Policy stays frozen; its `schema_version` records the initialization policy's origin, while SQLite `user_version` reports the actual current schema. Upgrading a Phase 1 run can stale its plan snapshot because normalized records now have additional fields. Other old schema versions remain unsupported.
+Schema 3/4 runs are not silently migrated. `run upgrade` verifies their existing audit/state, applies the additive migration under the same command transaction, then appends an event. Historical events and artifacts remain byte-identical. Policy stays frozen; its `schema_version` records the initialization policy's origin, while SQLite `user_version` reports the actual current schema. Upgrading a Phase 1 run can stale its plan snapshot because normalized records now have additional fields. Other old schema versions remain unsupported.
 
 Artifacts use content-addressed bytes, file/directory fsync, and atomic rename before SQLite metadata registration. A failed command can leave an orphan, which verification reports without deleting. Metadata cannot commit ahead of bytes. `artifact capture` saves an attributed snapshot; `--source-backed` additionally records the source baseline, revision, and relative file locator. The file must be inside the fingerprinted source scope and match the captured bytes under the command lock. Search and verification reports are authored reports, not automatically primary or empirical evidence.
 
@@ -64,8 +64,18 @@ The fingerprint records file contents, modes, symlink targets without following 
 
 Status/resume/gates observe drift without rewriting baseline history. `source refresh --reason` creates a new baseline and retracts active evidence captured from the old baseline, invalidating affected claims/lanes/need answers and transitive lane dependents. External snapshots and unrelated lanes survive. The scope is one source baseline, not individual changed lines; this conservative first version avoids a full run restart without silently blessing stale source evidence. Replacing source evidence and recording new arguments is explicit.
 
-Resume projects normalized questions, needs, lanes, leads, claims, proof obligations, defeaters, source observations, frozen policy, gate failures, next command families, and five recent event headers. No event replay or agent-specific isolated context is used. Entity lists and lane/claim checks expose detailed current state. Pagination and large-context budgeting remain deferred.
+Resume projects normalized questions, needs, lanes, leads, claims, proof obligations, defeaters, source observations, frozen policy, gate failures, next command families, and five recent event headers. No event replay is used. Scoped investigator resume exposes immutable starting context and only its own findings. Entity lists and lane/claim checks expose detailed current state. Pagination and large-context budgeting remain deferred.
 
-## Still deferred
+## Phases 3–4 and isolated investigators
 
-Leased investigators, partitioned/overlap isolation and reconciliation, custom Phase 1 surfaces, explicit assumptions, Phase 3 strategies/decisions/proof obligations/disposable experiments, Phase 4 adversarial defeaters, assurance scores, final renderers, and Taskledger handoff are not implemented. `subagents disabled` remains the only accepted invocation mode. No source editing, external messaging, production mutation, or automatic state cleanup is performed by Discovery.
+[The completion workflow](completion-workflow.md) defines the supported commands. Design gates recheck upstream research, exactly one strategy, decision/claim links, impact-preserving proof obligations, experiment results, requirement/need coverage, and an exact structured-state draft hash. Narrative is authored; relational references are validated by code. Authored prose is not automatically semantically verified.
+
+Experiments use a copied baseline and macOS Seatbelt with filesystem reads, copy-only writes, and no network. There is no unsandboxed fallback, credential-read isolation, or production database support. Reservation and receipt registration are separately audited transactions around execution; interrupted attempts never rerun implicitly. Existing source bytes remain untouched. Source scans are not atomic snapshots of a concurrently changing filesystem.
+
+Phase 4 checks bind to both spec revision and phase revision. Confirmed defeaters require explicit regression before repair. Material risks cannot be accepted by vote. Resolution evidence must remain active; retracting it reopens the challenge. Finalization recompiles structured/narrative exports, rechecks both structured and adversarial snapshots under the write lock, registers deterministic assurance dimensions, and marks the run finalized in one transaction. Export materializes already committed artifacts without creating another logical mutation.
+
+Investigators operate on immutable context and private finding/report rows. Lease tokens are caller-generated random secrets; only hashes enter the database or audit trail. Replicas require distinct actor identities, and scoped writes check token, expiry, actor, group, phase, and lane. This is cooperative isolation through the CLI, not authentication against a filesystem owner. All requested replicas must finish before reconciliation. Unique findings become leads/defeaters, and refutations contest claims independently of counts. Failed groups require explicit supersession and new groups.
+
+## Remaining extensions
+
+Explicit assumption/withdrawal conveniences, custom Phase 1 surface commands, richer profile policies, Linux/Windows experiment adapters, large-context pagination, and direct Taskledger ingestion remain extensions. The exported handoff contains structured requirements and traceability. These do not prevent current four-phase traversal. Real-project semantic validation is still needed.

@@ -78,3 +78,65 @@ Source refresh conservatively retracts all evidence backed by the previous repos
 ## 010 — Bounded WAL initialization retry
 
 Concurrent first-time connections can receive SQLITE_BUSY from WAL setup despite a busy timeout. SQLite documents that the [busy handler may be bypassed to avoid deadlock](https://www.sqlite.org/c3ref/busy_handler.html). Initialization now retries only WAL setup within a bounded deadline, preserving the configured timeout afterward. Logical mutations retain their existing transaction and idempotency behavior.
+
+
+## 011 — Complete traversal without a release-number bump
+
+The user requested continued development without ceremonial version bumps. The
+base release remains 0.2.0. Schema 5 adds structured requirements, draft freshness,
+experiment receipts, resolution provenance, and investigator groups/findings.
+Schema 3/4 upgrades are explicit transactional migrations preserving historical
+policy and events. New specs identify the structural-coverage-v1 rubric and store
+its full score details; historical runs retain their initialization policy origin.
+
+## 012 — Experiment reservation and offline execution
+
+The handoff calls for short command transactions and recoverable external effects.
+A subprocess cannot share SQLite atomicity. `experiment.exec` therefore reserves
+one attempt, executes outside the write transaction, and uses a deterministic
+second request to register its receipt. These are two named audited mutations.
+A missing receipt is interrupted/unknown, never implicit permission to rerun.
+Explicit abort/replacement retains failures and resets linked proof obligations.
+
+The first executor uses the host's macOS Seatbelt facility: default deny,
+filesystem reads, writes only within a copied baseline, and no networking. It has
+no unsandboxed fallback and rejects symlink-bearing copies. It does not provide
+credential-read isolation. Runtime testing showed that narrower read allowlists
+could abort the system Python launcher; allowing reads preserves the required
+source-write boundary while supporting installed runtimes. Other OS adapters are
+future extensions. The macOS sandbox facility is deprecated as an application
+API; the adapter is isolated for replacement. Runtime probes test actual behavior.
+[Apple's sandbox overview](https://developer.apple.com/library/archive/documentation/Security/Conceptual/AppSandboxDesignGuide/AboutAppSandbox/AboutAppSandbox.html)
+describes OS-level restrictions; [Python's subprocess documentation](https://docs.python.org/3/library/subprocess.html)
+documents process sessions, timeouts, and execution mechanics.
+
+## 013 — Isolated findings and caller-owned lease secrets
+
+Rather than expose mutable canonical rows to workers, investigators submit private
+finding/report rows against immutable context. All requested replicas are created
+up front, and all must finish before import/reconciliation. Imported refutations
+contest claims and every substantive unique finding creates follow-up work.
+Failed groups need explicit replacement, preserving the requested denominator.
+
+The caller supplies a fresh random lease secret; only its hash enters relational
+state or audit payloads. This avoids persisting a generated token inside the
+idempotent result/event envelope. Expiry, actor, phase/group, and lane checks apply
+to scoped writes; reclaim rotates the token. Distinct actors are required for
+replicas. This is cooperative context isolation, not filesystem-owner security or
+identity authentication. CLI orchestration is implemented; model spawning remains
+with the assistant and its available agent tools.
+
+## 014 — Structured finalization and adversarial freshness
+
+Drafts combine authored narrative with structured requirements and complete
+backward traceability. Structured-state edits stale drafts; revised drafts require
+fresh adversarial checks. Finalization compares both design and adversarial
+snapshots under its write transaction so a concurrently changed review cannot
+produce a stale final artifact. Material defeaters cannot be accepted by majority;
+confirmation requires regression before evidenced repair. Retraction reopens a
+previously defeated challenge.
+
+Assurance values measure procedural coverage, not truth probabilities. Overall
+assurance is the minimum dimension; unavailable/N/A work reduces demonstrated
+coverage. No score bypasses a gate. Exports materialize committed immutable
+artifacts and refuse conflicting files; they do not submit tasks to another tool.

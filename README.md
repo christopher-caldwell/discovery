@@ -2,7 +2,7 @@
 
 A deterministic Python CLI for turning request assertions into a durable, reviewable research plan. SQLite owns workflow state; models and humans supply attributed semantic judgments.
 
-**Phases 1 and 2 are implemented.** Discovery can clarify intent, investigate scoped lanes, record leads and artifact-backed evidence, evaluate claim arguments, perform procedural closure, refresh source baselines, and advance into Phase 3. Phases 3–4 remain blocked until their design, experiment, and adversarial protocols exist. Current release: **0.2.0**, schema **4**.
+**All four phases can now traverse through finalization.** Discovery supports intent clarification, evidence and claim investigation, leased partitioned/overlap investigators, strategies and proofs, isolated experiments, adversarial defeaters, and structured specification exports. The project is still iterating at **0.2.0**; the storage format is **schema 5**. See [the completion workflow](docs/completion-workflow.md) for the new commands and current boundaries.
 
 ## Install and validate
 
@@ -46,7 +46,7 @@ The run directory is explicit; its name need not equal the generated run UUID. E
 
 | Command | Purpose |
 | --- | --- |
-| `run init/upgrade` | Initialize a run or explicitly upgrade schema 3 while preserving its audit history |
+| `run init/upgrade` | Initialize a run or explicitly upgrade schema 3/4 while preserving its audit history |
 | `status`, `resume` | Read current state, observed drift, gate violations, and next actions |
 | `question create/list/resolve` | Record questions, authority hypotheses, and attributed answers |
 | `research-need create/list/answer` | Record needs traced to the request artifact |
@@ -61,6 +61,11 @@ The run directory is explicit; its name need not equal the generated run UUID. E
 | `argument create/list/verify/resolve-counter` | Record reasoning, semantic verification, and evidenced counterargument resolutions |
 | `plan snapshot/review` | Export exact review context and register an attributed semantic review of its hash |
 | `phase check/advance/regress` | Evaluate gates, move one step, or create revisions for an earlier traversal |
+| `strategy`, `decision`, `obligation`, `requirement` | Build traceable design and verify proof obligations |
+| `experiment plan/exec/finish/abort/replace` | Execute and recover isolated, audited experiments |
+| `challenge`, `defeater` | Complete exact-draft adversarial checks and resolve attacks |
+| `group`, `agent`, `finding` | Leased isolated investigators and durable reconciliation |
+| `spec draft/revise/export`, `assurance calculate` | Compile structured specifications and coverage indicators |
 | `audit verify` | Verify event chain, schema/state checksum, foreign keys, SQLite integrity, and artifacts |
 
 Run `uv run discovery --run PATH <command> --help` for required options. Entity arguments accept run-local references (`Q-001`, `RN-001`, `L-001`, `S-001`) or stored UUIDs. Regression causes use `kind:ref`, for example `need:RN-001` or `artifact:A-001`.
@@ -88,14 +93,14 @@ Failure: `{"ok":false,"error":{"code":"...","message":"...","details":{...}}}`. 
 
 - [Current implementation contract](docs/implementation-contract.md) describes what this release supports and its boundaries.
 - [Decision log](docs/decisions.md) records changes and clarifications to the handoff.
-- [Runtime DDL](src/discovery/adapters/sqlite/ddl.sql) is authoritative for schema version 4.
+- [Runtime DDL](src/discovery/adapters/sqlite/ddl.sql) is authoritative for schema version 5.
 - `discovery-design-package/` is the **unchanged historical handoff**. Within that package, DDL v2 supersedes v1; its CLI contract remains the target architecture for later slices. Its destructive SQL scripts are reference material and must never be run on a live run.
 - The archived Independent Consensus Audit is reference material, not an active skill or normative instruction. Discovery retains the requested reviewer denominator and separates support, contradiction, and omission; consensus never establishes verification.
 
 ## Existing runs
 
-Use `audit verify` to inspect a schema 3 run, then execute `run upgrade` with the normal request/actor flags. Upgrade is explicit, transactional, idempotent, and preserves historical events and the frozen policy. A current Phase 1 review may need repeating because the plan records gain fields. Do not reset a run to upgrade it.
+Use `audit verify` to inspect a schema 3/4 run, then execute `run upgrade` with the normal request/actor flags. Upgrade is explicit, transactional, idempotent, and preserves historical events and the frozen policy. A current Phase 1 review may need repeating because the plan records gain fields. Do not reset a run to upgrade it.
 
 ## Next slice
 
-Add leased investigators and isolated overlap reconciliation, then Phase 3 strategies, decisions, proof obligations, and disposable experiments. Phase 4 adversarial refinement and final specification rendering follow. The installed skill exposes only supported commands; synthetic fixtures are available under `tests/fixtures/phase2/` for iteration without a real project.
+Iterate on real projects, richer evidence profiles, source-refresh granularity, and additional OS sandbox adapters. Experiments currently execute only on macOS with Seatbelt; unsupported systems fail closed. Explicit assumption/withdrawal conveniences and direct Taskledger ingestion remain future extensions. `handoff.json` is produced without modifying an execution ledger. Synthetic fixtures remain available under `tests/fixtures/phase2/`.

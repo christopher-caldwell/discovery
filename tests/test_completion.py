@@ -1,0 +1,522 @@
+import json
+import sys
+
+import pytest
+from test_phase2 import argument, claim, closure, evidence, finish, investigation  # noqa: F401
+
+
+@pytest.fixture
+def designed(investigation):  # noqa: F811
+    env = investigation
+    if env["call"]("spec", "snapshot")["result"]["run"]["subagents_enabled"]:
+        reconcile_empty_group(env, phase=2)
+    c = claim(env)
+    e = evidence(env)
+    argument(env, c, e)
+    closure(env)
+    call = env["call"]
+    call("claim", "evaluate", c["ref"])
+    finish(env)
+    call("phase", "advance")
+    s = call(
+        "strategy",
+        "create",
+        "--name",
+        "Revision-aware consumer",
+        "--description",
+        "Compare revision before applying event",
+    )["result"]
+    call("strategy", "select", s["ref"], "--reason", "Supports ordering constraint")
+    d = call(
+        "decision",
+        "create",
+        "--strategy",
+        s["ref"],
+        "--claim",
+        c["ref"],
+        "--text",
+        "Reject stale revisions",
+        "--rationale",
+        "Late retries must not regress state",
+        "--impact",
+        "material",
+    )["result"]
+    call("decision", "accept", d["ref"], "--reason", "Chosen implementation")
+    o = call(
+        "obligation",
+        "create",
+        "--decision",
+        d["ref"],
+        "--text",
+        "Prove retry behavior",
+        "--impact",
+        "material",
+        "--profile",
+        "primary",
+    )["result"]
+    call("obligation", "attach-evidence", o["ref"], "--evidence-ref", e["ref"])
+    call(
+        "obligation",
+        "satisfy",
+        o["ref"],
+        "--reason",
+        "Fixture primary contract supplies required behavior",
+    )
+    call(
+        "requirement",
+        "create",
+        "--decision",
+        d["ref"],
+        "--need",
+        env["need"]["ref"],
+        "--text",
+        "Ignore old revisions",
+        "--acceptance",
+        "seq 2 then seq 1 retains state 2",
+        "--verification",
+        "Regression test plus idempotent duplicate delivery",
+    )
+    narrative = env["root"].parent / "narrative.md"
+    narrative.write_text(
+        "Implement a revision comparison and test duplicate and late delivery. "
+        "Fictional fixture only."
+    )
+    return {
+        **env,
+        "decision": d,
+        "obligation": o,
+        "evidence": e,
+        "claim": c,
+        "narrative": narrative,
+    }
+
+
+def draft(env):
+    return env["call"]("spec", "draft", "--narrative", str(env["narrative"]))["result"]
+
+
+def challenges(env):
+    call = env["call"]
+    checks = call("challenge", "initialize")["result"]["checks"]
+    for c in checks:
+        call(
+            "challenge",
+            "complete",
+            c["ref"],
+            "--disposition",
+            "completed_no_finding",
+            "--reason",
+            "Synthetic adversarial check completed",
+            "--report",
+            str(env["narrative"]),
+        )
+    return checks
+
+
+def test_complete_traversal_exports_and_final_replay(designed):
+    env = designed
+    call = env["call"]
+    draft(env)
+    assert call("phase", "advance")["result"]["phase"] == 4
+    challenges(env)
+    assert call("phase", "check")["result"]["can_advance"]
+    from discovery.domain.encoding import uid
+
+    request = uid()
+    result = call("phase", "advance", request=request)["result"]
+    assert result["status"] == "finalized"
+    assert call("phase", "advance", request=request)["replayed"]
+    assert (
+        call(
+            "strategy", "create", "--name", "Forbidden", "--description", "after final", expected=2
+        )["error"]["code"]
+        == "RUN_NOT_ACTIVE"
+    )
+    exports = call("spec", "export")["result"]
+    from pathlib import Path
+
+    handoff = json.loads((Path(exports["directory"]) / "handoff.json").read_text())
+    assert (
+        handoff["final"]
+        and handoff["requirements"]
+        and handoff["traceability"]["technical_decision_claim"]
+    )
+    assert call("audit", "verify")["result"]["valid"]
+    assert call("resume")["result"]["status"] == "finalized"
+    assert result["spec"]["assurance"]["overall"] == 100
+
+
+def test_draft_staleness_and_revised_checklist(designed):
+    env = designed
+    call = env["call"]
+    draft(env)
+    call(
+        "requirement",
+        "create",
+        "--decision",
+        env["decision"]["ref"],
+        "--need",
+        env["need"]["ref"],
+        "--text",
+        "Observe rejected events",
+        "--acceptance",
+        "Count increments",
+        "--verification",
+        "Inspect metric",
+    )
+    assert "SPEC_STALE" in {v["code"] for v in call("phase", "check")["result"]["violations"]}
+    draft(env)
+    call("phase", "advance")
+    challenges(env)
+    call("spec", "revise", "--narrative", str(env["narrative"]))
+    assert not call("phase", "check")["result"]["can_advance"]
+    challenges(env)
+    assert call("phase", "check")["result"]["can_advance"]
+
+
+def test_defeater_requires_regression_and_distinct_resolution(designed):
+    env = designed
+    call = env["call"]
+    draft(env)
+    call("phase", "advance")
+    check = call("challenge", "initialize")["result"]["checks"][0]
+    d = call(
+        "defeater",
+        "create",
+        "--check",
+        check["ref"],
+        "--decision",
+        env["decision"]["ref"],
+        "--evidence-ref",
+        env["evidence"]["ref"],
+        "--text",
+        "Sequence reset breaks ordering",
+        "--impact",
+        "material",
+    )["result"]
+    call(
+        "defeater",
+        "accept-contextual-risk",
+        d["ref"],
+        "--reason",
+        "Majority thinks fine",
+        expected=2,
+    )
+    call("defeater", "confirm", d["ref"], "--reason", "Credible reset case")
+    assert (
+        call(
+            "defeater",
+            "defeat",
+            d["ref"],
+            "--evidence-ref",
+            env["evidence"]["ref"],
+            "--reason",
+            "No change",
+            "--report",
+            str(env["narrative"]),
+            expected=2,
+        )["error"]["code"]
+        == "REGRESSION_REQUIRED"
+    )
+    call(
+        "phase",
+        "regress",
+        "--to",
+        "3",
+        "--cause",
+        "defeater:" + d["ref"],
+        "--reason",
+        "Repair reset handling",
+    )
+    assert (
+        call(
+            "defeater",
+            "defeat",
+            d["ref"],
+            "--evidence-ref",
+            env["evidence"]["ref"],
+            "--reason",
+            "Self resolution",
+            "--report",
+            str(env["narrative"]),
+            expected=2,
+        )["error"]["code"]
+        == "RESOLUTION_EVIDENCE_REQUIRED"
+    )
+    e = evidence(env, document="evidence/reproduction.md")
+    call(
+        "defeater",
+        "defeat",
+        d["ref"],
+        "--evidence-ref",
+        e["ref"],
+        "--reason",
+        "Synthetic additional evidence narrows valid sequence domain",
+        "--report",
+        str(env["narrative"]),
+    )
+    draft(env)
+    call("phase", "advance")
+    challenges(env)
+    assert call("phase", "check")["result"]["can_advance"]
+
+    call("evidence", "retract", e["ref"], "--reason", "Resolution evidence was withdrawn")
+    assert call("defeater", "list")["result"][0]["defeater_status"] == "open"
+    assert not call("phase", "check")["result"]["can_advance"]
+
+
+def plan_experiment(env):
+    return env["call"](
+        "experiment",
+        "plan",
+        "--decision",
+        env["decision"]["ref"],
+        "--name",
+        "Isolated proof",
+        "--hypothesis",
+        "Writes stay in the copy",
+        "--procedure",
+        "Execute deterministic Python snippet",
+    )["result"]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Seatbelt execution adapter")
+def test_experiment_isolation_replay_and_proof(designed):
+    env = designed
+    call = env["call"]
+    experiment = plan_experiment(env)
+    from discovery.domain.encoding import uid
+
+    request = uid()
+    command = json.dumps(
+        [
+            "/usr/bin/python3",
+            "-c",
+            'from pathlib import Path; Path("app.txt").write_text("copy changed"); '
+            'print("proof passed")',
+        ]
+    )
+    result = call("experiment", "exec", experiment["ref"], "--command", command, request=request)[
+        "result"
+    ]
+    assert result["exit_code"] == 0 and (env["source"] / "app.txt").read_text() == "baseline"
+    assert call("experiment", "exec", experiment["ref"], "--command", command, request=request)[
+        "replayed"
+    ]
+    call(
+        "experiment",
+        "finish",
+        experiment["ref"],
+        "--outcome",
+        "passed",
+        "--conclusion",
+        "Observed isolated result",
+        "--limitations",
+        "Synthetic local source only",
+    )
+    proof = call(
+        "obligation",
+        "create",
+        "--decision",
+        env["decision"]["ref"],
+        "--text",
+        "Empirical copy isolation",
+        "--impact",
+        "critical",
+        "--profile",
+        "empirical",
+    )["result"]
+    call(
+        "obligation",
+        "attach-experiment",
+        proof["ref"],
+        "--experiment",
+        experiment["ref"],
+    )
+    call(
+        "obligation",
+        "satisfy",
+        proof["ref"],
+        "--reason",
+        "Passed experiment registered",
+    )
+    assert call("audit", "verify")["result"]["valid"]
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Seatbelt execution adapter")
+def test_experiment_cannot_write_original_or_use_network(designed):
+    env = designed
+    call = env["call"]
+    exp = plan_experiment(env)
+    code = (
+        f'from pathlib import Path; Path({str(env["source"] / "app.txt")!r}).write_text("corrupt")'
+    )
+    result = call(
+        "experiment", "exec", exp["ref"], "--command", json.dumps(["/usr/bin/python3", "-c", code])
+    )["result"]
+    assert result["exit_code"] != 0 and (env["source"] / "app.txt").read_text() == "baseline"
+    call(
+        "experiment",
+        "finish",
+        exp["ref"],
+        "--outcome",
+        "passed",
+        "--conclusion",
+        "Pretend",
+        "--limitations",
+        "none",
+        expected=2,
+    )
+    exp = plan_experiment(env)
+    result = call(
+        "experiment",
+        "exec",
+        exp["ref"],
+        "--command",
+        json.dumps(
+            ["/usr/bin/python3", "-c", 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0))']
+        ),
+    )["result"]
+    assert result["exit_code"] != 0
+
+
+def test_interrupted_reservation_does_not_rerun(designed, monkeypatch):
+    from discovery.application import experiments
+    from discovery.domain.encoding import uid
+
+    env = designed
+    call = env["call"]
+    exp = plan_experiment(env)
+    request = uid()
+    invocations = []
+
+    def fail(*args):
+        invocations.append(True)
+        raise OSError("Injected interruption")
+
+    monkeypatch.setattr(experiments, "run_process", fail)
+    args = ("experiment", "exec", exp["ref"], "--command", '["/usr/bin/true"]')
+    assert call(*args, request=request, expected=3)["error"]["code"] == "IO_ERROR"
+    assert call(*args, request=request, expected=2)["error"]["code"] == "EXPERIMENT_INTERRUPTED"
+    assert len(invocations) == 1
+    call("experiment", "abort", exp["ref"], "--reason", "No receipt; process result unknown")
+    replacement = plan_experiment(env)
+    call(
+        "experiment",
+        "replace",
+        exp["ref"],
+        "--replacement",
+        replacement["ref"],
+        "--reason",
+        "Fresh recorded attempt",
+    )
+    assert call("audit", "verify")["result"]["valid"]
+
+
+def reconcile_empty_group(env, phase):
+    import secrets
+
+    from discovery.domain.encoding import uid
+
+    call = env["call"]
+    extra = ["--lane", env["lane"]["ref"]] if phase == 2 else []
+    group = call("group", "dispatch", "--count", "2", *extra)["result"]
+    report = env["root"].parent / "independent.md"
+    report.write_text(
+        "Independent synthetic review completed with no additional findings. Offline scope only."
+    )
+    for member in group["agents"]:
+        actor = uid()
+        token = secrets.token_hex(32)
+        call("--lease", token, "agent", "start", member["ref"], identity=actor)
+        call(
+            "--lease",
+            token,
+            "agent",
+            "complete",
+            member["ref"],
+            "--outcome",
+            "no_findings",
+            "--report",
+            str(report),
+            identity=actor,
+        )
+    call(
+        "group",
+        "reconcile",
+        group["ref"],
+        "--reason",
+        "Both independent reports considered",
+        "--report",
+        str(report),
+    )
+    return group
+
+
+@pytest.mark.parametrize("run", ["overlap"], indirect=True)
+def test_overlap_gates_in_both_investigation_and_adversarial_phases(designed):
+    env = designed
+    call = env["call"]
+    draft(env)
+    call("phase", "advance")
+    challenges(env)
+    assert "CONSENSUS_INCOMPLETE" in {
+        v["code"] for v in call("phase", "check")["result"]["violations"]
+    }
+    reconcile_empty_group(env, phase=4)
+    assert call("phase", "advance")["result"]["status"] == "finalized"
+    assert call("audit", "verify")["result"]["valid"]
+
+
+def test_final_compilation_rechecks_adversarial_snapshot(designed, monkeypatch):
+    from discovery.application import specification
+    from discovery.domain.encoding import uid
+
+    env = designed
+    call = env["call"]
+    draft(env)
+    call("phase", "advance")
+    challenges(env)
+    original = specification.prepare
+
+    def stale(*args, **kwargs):
+        result = original(*args, **kwargs)
+        if kwargs.get("final"):
+            result["review_sha256"] = "0" * 64
+        return result
+
+    before = call("audit", "verify")["result"]["event_count"]
+    monkeypatch.setattr(specification, "prepare", stale)
+    assert call("phase", "advance", request=uid(), expected=2)["error"]["code"] == "SPEC_STALE"
+    assert call("audit", "verify")["result"]["event_count"] == before
+    assert call("status")["result"]["status"] == "active"
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="macOS Seatbelt execution adapter")
+def test_experiment_timeout_is_recorded_and_cannot_pass(designed):
+    env = designed
+    call = env["call"]
+    exp = plan_experiment(env)
+    result = call(
+        "experiment",
+        "exec",
+        exp["ref"],
+        "--timeout",
+        "1",
+        "--command",
+        json.dumps(["/usr/bin/python3", "-c", "import time; time.sleep(10)"]),
+    )["result"]
+    assert result["timed_out"] and result["exit_code"] != 0
+    call(
+        "experiment",
+        "finish",
+        exp["ref"],
+        "--outcome",
+        "passed",
+        "--conclusion",
+        "Not actually completed",
+        "--limitations",
+        "Timed out",
+        expected=2,
+    )
+    assert call("audit", "verify")["result"]["valid"]

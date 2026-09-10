@@ -8,7 +8,9 @@ from pathlib import Path
 from discovery import __version__
 from discovery.application.commands import execute
 from discovery.application.queries import query
-from discovery.domain.encoding import canonical, uid, uuid
+from discovery.completion_cli import FAMILIES, agent_arguments
+from discovery.completion_cli import arguments as completion_arguments
+from discovery.domain.encoding import canonical, digest, uid, uuid
 from discovery.domain.errors import DiscoveryError
 
 
@@ -35,7 +37,7 @@ def parser() -> Parser:
     p.add_argument(
         "--version",
         action="version",
-        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 4}}),
+        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 5}}),
     )
     p.add_argument("--json", action="store_true")
     p.add_argument(
@@ -46,10 +48,13 @@ def parser() -> Parser:
     p.add_argument("--actor-name", type=text)
     p.add_argument("--actor-kind", choices=["human", "model", "system"])
     p.add_argument("--session-id", type=uuid)
+    p.add_argument("--agent-run", type=text)
+    p.add_argument("--lease", type=text)
     families = p.add_subparsers(dest="family", required=True)
     for simple in ("status", "resume"):
         families.add_parser(simple).set_defaults(command=simple)
     for family, operations in {
+        **FAMILIES,
         "run": ["init", "upgrade"],
         "question": ["create", "list", "resolve"],
         "research-need": ["create", "list", "answer"],
@@ -84,6 +89,8 @@ def parser() -> Parser:
                 name = "activity.list"
             cmd.set_defaults(command=name)
             phase2_arguments(cmd, name)
+            completion_arguments(cmd, name, text)
+            agent_arguments(cmd, name, text)
             if name == "run.init":
                 cmd.add_argument("--title", required=True, type=text)
                 cmd.add_argument("--input", required=True)
@@ -267,6 +274,15 @@ def main(argv: list[str] | None = None) -> int:
             "kind": ns.pop("actor_kind"),
         }
         session = ns.pop("session_id") or uid()
+        lease = ns.pop("lease", None)
+        if lease:
+            if len(lease) < 32:
+                raise DiscoveryError(
+                    "LEASE_INVALID", "Use a random lease of at least 32 characters."
+                )
+            ns["lease_hash"] = digest(lease.encode())
+        if not ns.get("agent_run"):
+            ns.pop("agent_run", None)
         readonly = name in (
             "status",
             "resume",
@@ -275,9 +291,12 @@ def main(argv: list[str] | None = None) -> int:
             "phase.check",
             "audit.verify",
             "plan.snapshot",
+            "spec.snapshot",
+            "spec.export",
+            "assurance.calculate",
         ) or name.endswith(".list")
         if readonly:
-            result = query(root, name, ns.get("ref"))
+            result = query(root, name, ns.get("ref"), scope=ns, actor_uuid=actor["uuid"])
             if name == "audit.verify" and not result["valid"]:
                 raise DiscoveryError(
                     "AUDIT_INTEGRITY_FAILURE", "Audit verification failed.", **result
@@ -295,7 +314,7 @@ def main(argv: list[str] | None = None) -> int:
                 ns.pop("technical", None)
             if ns.get("method") is None:
                 ns.pop("method", None)
-            for key in ("needs", "methods", "surfaces", "evidence"):
+            for key in ("needs", "methods", "surfaces", "evidence", "claims"):
                 if key in ns:
                     ns[key] = sorted(set(ns[key]))
             output = {"ok": True, **execute(root, name, ns, request, actor, session)}

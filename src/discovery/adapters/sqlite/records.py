@@ -6,6 +6,17 @@ from discovery.domain.encoding import uid
 from discovery.domain.errors import require
 
 ENTITIES = {
+    "strategy": ("implementation_strategy", "ST"),
+    "decision": ("technical_decision", "D"),
+    "obligation": ("proof_obligation", "PO"),
+    "experiment": ("experiment", "EXP"),
+    "challenge": ("adversarial_check", "CH"),
+    "defeater": ("defeater", "DEF"),
+    "spec": ("technical_spec_revision", "SPEC"),
+    "requirement": ("technical_requirement", "REQ"),
+    "group": ("investigation_group", "G"),
+    "agent": ("agent_run", "AR"),
+    "finding": ("investigator_finding", "F"),
     "lead": ("lead", "LEAD"),
     "method": ("research_method", "M"),
     "evidence": ("evidence", "E"),
