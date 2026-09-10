@@ -54,7 +54,10 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         content = path.read_bytes()
         require(content.strip(), "INVALID_ARGUMENT", "Report must not be empty.")
         data["report_sha256"] = digest(content)
-        prepared["artifact"] = capture(root, content)
+        if name == "research.record":
+            prepared["content"] = content
+        else:
+            prepared["artifact"] = capture(root, content)
         if name == "plan.review":
             snapshot = query(root, "plan.snapshot")
             prepared["context"] = capture(root, canonical(snapshot["context"]).encode())
@@ -122,7 +125,7 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
             return investigation.write(con, aid, name, data, prepared, root)
         if name.startswith("phase."):
             return transition(con, aid, name, data, root, prepared)
-        return write(con, aid, name, data, prepared)
+        return write(con, aid, name, data, prepared, root)
 
     return store.execute(
         name,

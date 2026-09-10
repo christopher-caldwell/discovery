@@ -47,12 +47,12 @@ The run directory is explicit; its name need not equal the generated run UUID. E
 | Command | Purpose |
 | --- | --- |
 | `run init/upgrade` | Initialize a run or explicitly upgrade schema 3/4 while preserving its audit history |
-| `status`, `resume` | Read current state, observed drift, gate violations, and next actions |
+| `status`, `resume` | Read current state, observed drift, gates, next actions; resume also exposes research observations and captured report paths |
 | `question create/list/resolve` | Record questions, authority hypotheses, and attributed answers |
 | `research-need create/list/answer` | Record needs traced to the request artifact |
 | `lane create/list/depends-on/activate/reopen/closure-begin/close/check` | Link needs to scoped questions with impact, methods, surfaces, and acyclic dependencies |
 | `surface list/disposition` | Dispose current Phase 1 baseline surfaces with an explicit reason |
-| `research record` | Record search strategy, result summary, origin URI, and immutable result artifact |
+| `research record` | Record a search and immutable report; optionally complete its surface and linked method in the same transaction |
 | `lead create/list/disposition` | Register leads and terminal investigated/irrelevant/duplicate/inaccessible/human-input outcomes |
 | `method create/list/disposition` | Record required research methods and completion provenance |
 | `artifact capture/list`, `source refresh/list` | Capture snapshots and replace drifted source baselines explicitly |
@@ -74,7 +74,7 @@ A typical Phase 1 sequence is:
 
 1. Create questions. Blocking is the default. Record authority category, rationale, and confidence as a hypothesis; resolve with an attributed answer. Non-blocking questions must also be answered in this slice; explicit assumption commands are deferred.
 2. Create research needs, then lanes linked with `--need RN-001`. Each lane requires a concrete question, rationale, scope, impact, at least one `--method`, and at least one `--surface`. Impact cannot be lower than any linked need. Add dependencies with `lane depends-on`.
-3. Inspect `surface list`. For an actual search, first use `research record S-001 --query ... --summary ... --origin-uri ... --report /path/to/result.txt`, then disposition it as `searched`. Other supported dispositions are `unavailable`, `inaccessible`, and `not_applicable`, each with a reason. They represent real limitations and must not be used as a shortcut for available research.
+3. Inspect `surface list`. For an actual search, first use `research record S-001 --query ... --summary ... --origin-uri ... --report /path/to/result.txt`, add `--complete-surface "reason"` when that search completes the surface, or disposition it separately as `searched`. In Phase 2, `--method M-001 --complete-method "reason"` can complete the linked method with the same recorded search. Other supported dispositions are `unavailable`, `inaccessible`, and `not_applicable`, each with a reason. They represent real limitations and must not be used as a shortcut for available research.
 4. Export `plan snapshot`. Have the model or human inspect its `context` and write a substantive review report. Submit `plan review --plan-hash HASH --outcome passed --report /path/to/review.txt`. The CLI verifies linkage and freshness; it does not decide whether the report's reasoning is correct.
 5. Inspect `phase check` and fix violations. `phase advance` moves from 1 to 2 only if all required records and the current review exist. Subsequent plan edits stale the review. Continue with [the Phase 2 workflow](docs/phase2-workflow.md).
 6. If request meaning needs correction, use `phase regress --to 1 --cause need:RN-001 --reason ...`. Questions and research remain. Revisit the new Phase 1 surfaces and review its new plan before advancing again.

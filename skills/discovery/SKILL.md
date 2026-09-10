@@ -19,7 +19,9 @@ For an existing run, begin with:
 discovery --json --run /absolute/path/to/run resume
 ```
 
-Use its current phase, gate violations, and legal next actions. Read its immutable request artifact when needed. SQLite state is authoritative; do not reconstruct current state from prior chat or replay the event log yourself. If multiple run directories are plausible, inspect their statuses and ask which to continue when intent remains ambiguous.
+Use its current phase, gate violations, and legal next actions. Its
+`research_activities` and `research_reports` preserve earlier observations and
+captured report paths; inspect those before repeating research. Read its immutable request artifact when needed. SQLite state is authoritative; do not reconstruct current state from prior chat or replay the event log yourself. If multiple run directories are plausible, inspect their statuses and ask which to continue when intent remains ambiguous.
 
 For a new run, establish the request file, source directory, and subagent preference. Ask about subagents if the user has not specified a preference. Use `disabled`, `partitioned`, or `overlap` as requested. Ask whether overlap is desired when the user enables agents without choosing a mode. The CLI manages investigator state; the assistant launches actual workers after dispatch.
 
@@ -34,6 +36,16 @@ discovery --json --run /absolute/path/to/run \
 ```
 
 Generate actual UUIDs. Use a model actor for your own submissions; never attribute your inference to a human. Use `question resolve` to record a genuine answer with its authority/source clear in the answer text. Missing human-authority answers remain questions.
+
+## Intent and proportionate research
+
+Distinguish a source explanation from a proposed change before planning research.
+For change requests, inspect the relevant governing product/technical contract as
+well as code and operating guidance; preserve discrepancies as questions rather
+than treating the ticket as authority. Before elaborating a blocked proposal, read
+[request-vetting.md](references/request-vetting.md) for source selection, ownership
+checks and stopping boundaries. Keep small questions scoped; do not reduce impact
+or claim unfinished evidence review is complete to save effort.
 
 ## Command discipline
 
@@ -68,7 +80,11 @@ when formal evidence review is unfinished.
 
 Blocking is the default for questions. This release has no assumption/withdraw commands. Needs trace to the request artifact. Lanes must pose specific questions, link needs, and declare scope, impact, methods, and surfaces. Do not reduce impact to pass a gate.
 
-Record actual searches with `research record`, including the query/procedure, result summary, origin URI, and immutable report file. A `searched` surface requires this activity. Other terminal dispositions require truthful reasons; unavailable/inaccessible/not_applicable are not convenient substitutes for unfinished work.
+Record actual searches with `research record`, including the query/procedure, result summary, origin URI, and immutable report file. When the recorded search completes the work, add `--complete-surface "reason"`
+to mark its surface searched in the same transaction. In Phase 2,
+`--method M-001 --complete-method "reason"` also completes that linked method.
+These flags require the actual recorded work and retain ordinary scope/closure
+validation; omit them when more research is needed. A `searched` surface requires this activity. Other terminal dispositions require truthful reasons; unavailable/inaccessible/not_applicable are not convenient substitutes for unfinished work.
 
 For semantic coverage review, inspect `plan snapshot`'s exact `context`, write a substantive report, and submit `plan review --plan-hash HASH --outcome passed|findings|inconclusive --report FILE`. Submit `passed` only when your semantic assessment supports it. Plan edits stale the review. A submitted review is attributed reasoning, not independent consensus or verified factual truth.
 

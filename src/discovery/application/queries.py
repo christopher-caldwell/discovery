@@ -200,6 +200,13 @@ def query(
             "questions": snapshot["clarification_question"],
             "assumptions": snapshot["assumption"],
             "research_needs": snapshot["research_need"],
+            "research_activities": snapshot["research_activity"],
+            "research_reports": [
+                a
+                for a in snapshot["artifact"]
+                if a["artifact_id"]
+                in {r["result_artifact_id"] for r in snapshot["research_activity"]}
+            ],
             "lanes": snapshot["research_lane"],
             "open_leads": [x for x in snapshot["lead"] if x["lead_status"] == "pending"],
             "claims": snapshot["claim"],

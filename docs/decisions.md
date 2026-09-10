@@ -204,3 +204,23 @@ can still create orphans; the change does not claim universal orphan prevention.
 The simple case also exposed workflow cost and an absent answer-only completion
 route. Those need further evaluation, not an untested relaxation of evidence gates.
 Base version and schema remain unchanged.
+
+
+## 019 — Reduce research bookkeeping while preserving proof gates
+
+The Taskledger evaluation used separate mutations to record searches and mark the
+same work completed. `research record` now accepts explicit surface/method completion
+reasons and applies those linked updates atomically with the activity. Method scope,
+active closure checks, claim admission and phase gates remain unchanged. Report
+bytes are persisted only after validating the activity target. Omitted flags retain
+the previous logical request shape for replay compatibility.
+
+Resume now exposes attributed research activities and their artifact metadata. It
+does not promote a rich Phase 1 narrative into formally evaluated claims. The skill
+now checks governing product contracts alongside implementation, separates intended
+and observed behavior, and defers detailed design when owner decisions control it.
+These semantic checks remain attributed model work, not a keyword-based code gate.
+
+A deterministic replay of the simple evaluation used 31 rather than 35 CLI calls
+with the same unfinished research status. It is not evidence of a cold-model speedup
+or a calibrated confidence score. No release/schema increment is needed.

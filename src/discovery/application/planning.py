@@ -1,13 +1,17 @@
 import sqlite3
+from pathlib import Path
 
+from discovery.adapters.filesystem.artifacts import capture
 from discovery.adapters.sqlite.queries import plan
 from discovery.adapters.sqlite.records import entity, insert, resolve
-from discovery.application.investigation import reopen
+from discovery.application.investigation import complete_record, reopen
 from discovery.domain.encoding import canonical, digest, now, uid
 from discovery.domain.errors import require
 
 
-def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: dict) -> dict:
+def write(
+    con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: dict, root: Path
+) -> dict:
     run = con.execute("SELECT * FROM discovery_run").fetchone()
     require(
         run["current_phase_no"] == 1
@@ -140,6 +144,11 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: 
         )
         sid = surface["research_surface_id"]
         if name == "research.record":
+            require(
+                not data.get("complete_method"),
+                "WRONG_PHASE",
+                "Method completion requires a linked Phase 2 lane method.",
+            )
             artifact = entity(
                 con,
                 "artifact",
@@ -147,9 +156,9 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: 
                 media_type="text/plain",
                 captured_by_actor_id=actor,
                 origin_uri=data["origin_uri"],
-                **prepared["artifact"],
+                **capture(root, prepared["content"]),
             )
-            return entity(
+            result = entity(
                 con,
                 "activity",
                 research_surface_id=sid,
@@ -159,6 +168,8 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: 
                 result_summary=data["summary"],
                 result_artifact_id=artifact["id"],
             )
+            complete_record(con, sid, None, data)
+            return result
         if data["disposition"] == "searched":
             require(
                 con.execute(

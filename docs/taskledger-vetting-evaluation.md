@@ -159,3 +159,30 @@ All raw artifacts are under `.discovery/taskledger-vetting/`:
 
 This is a process-evaluation record, not a claim that two successful answers prove
 Discovery reliably vets arbitrary requirements.
+
+## Follow-up source-flow refinement
+
+The report led to an additional implementation pass:
+
+- Research recording can complete its surface and linked method atomically with
+  explicit reasons. Wrong scope and stale closure checks still reject the work.
+- Resume includes research activities and report metadata so the next session can
+  inspect original reasoning rather than reconstructing it from a summary.
+- The skill now inspects governing product contracts alongside source, distinguishes
+  desired/current behavior, and defers detailed design while a blocking ownership
+  or persistence decision is unresolved. This is semantic guidance, not an automatic
+  guarantee that the model will find every relevant specification.
+
+The original simple-case transcript was replayed against a separate disposable run
+with the four searched-surface updates folded into their recorded searches. This
+used **31 calls instead of 35** and retained Phase 2 with zero admitted claims and
+unmet gates. Existing source research was reused; this was not a new independent
+operator evaluation and does not establish token or end-to-end time savings. The
+transcript and comparison are in `evaluator/source-flow-refinement/`. Original runs
+and measurements remain unchanged. Confidence calibration and a formal answer-only
+completion route remain open design questions rather than being approximated by
+weaker evidence checks.
+
+Refinement validation: **107 tests passed in 50.17 seconds**, plus lint, formatting,
+package build and skill/plugin validation. A real pre-change research request from
+the original simple run replayed successfully with an unchanged audit.

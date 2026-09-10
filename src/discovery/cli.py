@@ -145,6 +145,18 @@ def parser() -> Parser:
                 cmd.add_argument("--reason", required=True, type=text)
             if name == "research.record":
                 cmd.add_argument("--method", type=text)
+                cmd.add_argument(
+                    "--complete-surface",
+                    type=text,
+                    metavar="REASON",
+                    help="Record this search and mark its surface searched in one transaction.",
+                )
+                cmd.add_argument(
+                    "--complete-method",
+                    type=text,
+                    metavar="REASON",
+                    help="Also complete the linked Phase 2 method; requires --method.",
+                )
                 cmd.add_argument("--query", required=True, type=text)
                 cmd.add_argument("--summary", required=True, type=text)
                 cmd.add_argument("--origin-uri", required=True, type=text)
@@ -320,6 +332,11 @@ def main(argv: list[str] | None = None) -> int:
                 ns.pop("technical", None)
             if ns.get("method") is None:
                 ns.pop("method", None)
+            for option in ("complete_surface", "complete_method"):
+                if ns.get(option) is None:
+                    ns.pop(option, None)
+            if ns.get("complete_method") and not ns.get("method"):
+                raise DiscoveryError("INVALID_ARGUMENT", "--complete-method requires --method.")
             for key in ("needs", "methods", "surfaces", "evidence", "claims"):
                 if key in ns:
                     ns[key] = sorted(set(ns[key]))

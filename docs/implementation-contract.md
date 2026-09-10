@@ -21,7 +21,8 @@ Schema 3/4 runs are not silently migrated. `run upgrade` verifies their existing
 Artifacts use content-addressed bytes, file/directory fsync, and atomic rename before SQLite metadata registration. A failed command can leave an orphan, which verification reports without deleting.
 For `artifact capture`, phase, scope and source validation now precede persistence
 inside the command transaction; rejected validation and successful replay do not
-write new artifact bytes. Later persistence/transaction failures can still leave orphans. Metadata cannot commit ahead of bytes. `artifact capture` saves an attributed snapshot; `--source-backed` additionally records the source baseline, revision, and relative file locator. The file must be inside the fingerprinted source scope and match the captured bytes under the command lock. Search and verification reports are authored reports, not automatically primary or empirical evidence.
+write new artifact bytes. `research record` similarly validates phase, surface,
+method scope and closure iteration before persisting its report. Later persistence/transaction failures can still leave orphans. Metadata cannot commit ahead of bytes. `artifact capture` saves an attributed snapshot; `--source-backed` additionally records the source baseline, revision, and relative file locator. The file must be inside the fingerprinted source scope and match the captured bytes under the command lock. Search and verification reports are authored reports, not automatically primary or empirical evidence.
 
 The immutable event envelope is hash chained and includes the original result plus a checksum of normalized state and schema definitions/version. Audit verification checks all hashes/predecessors, current state/schema, foreign keys, SQLite integrity, artifact paths/hashes/sizes, and orphan files. This is tamper evidence, not event sourcing, authentication, or proof of semantic truth. A filesystem owner can replace an entire database with another internally consistent chain or backup; detecting that needs an external trusted checkpoint. Full verification on each command is deliberately conservative and may need optimization for large runs.
 
@@ -43,7 +44,12 @@ Activate each planned lane. Phase 2 may add needs, lanes, and dependencies for n
 
 Every lead links to an originating activity in the same lane. Terminal dispositions are investigated, irrelevant, duplicate, inaccessible, or requires_human_input, each with a reason. Investigated requires a separate same-lane research activity. Duplicates reference a terminal nonduplicate lead in that lane, preventing cyclic chains and unresolved aliasing. Material/critical human-input leads require blocking questions. There is no skipped state.
 
-Research activities can link a surface and method in the same lane. Completed methods and searched surfaces require actual activities; unavailable/inaccessible/not_applicable require reasons. Current closure methods must belong to the active closure iteration. Old iterations remain historical and cannot be completed retroactively.
+Research activities can link a surface and method in the same lane. Optional
+`research record --complete-surface REASON` and `--complete-method REASON` combine
+recording with searched/completed dispositions in one mutation/event. Method
+completion requires an explicit same-lane method in Phase 2 and a current closure
+iteration when applicable. Omitted flags preserve prior behavior and request
+identity. These operations do not admit claims, close lanes or bypass plan review. Completed methods and searched surfaces require actual activities; unavailable/inaccessible/not_applicable require reasons. Current closure methods must belong to the active closure iteration. Old iterations remain historical and cannot be completed retroactively.
 
 `lane closure-begin` requires an active lane with no pending leads, increments its iteration, and instantiates the run policy's terminology, snowballing, contradiction, and evidence-gap methods. New leads, evidence, arguments, method requirements, dependency changes, or explicit reopen invalidate closure. Affected lanes and transitive dependents reopen; prior need answers become covered, and previously admissible claims become proposed pending reevaluation. Historical answers remain present with their nonterminal status, rather than being erased.
 
@@ -67,7 +73,10 @@ The fingerprint records file contents, modes, symlink targets without following 
 
 Status/resume/gates observe drift without rewriting baseline history. `source refresh --reason` creates a new baseline and retracts active evidence captured from the old baseline, invalidating affected claims/lanes/need answers and transitive lane dependents. External snapshots and unrelated lanes survive. The scope is one source baseline, not individual changed lines; this conservative first version avoids a full run restart without silently blessing stale source evidence. Replacing source evidence and recording new arguments is explicit.
 
-Resume projects normalized questions, needs, lanes, leads, claims, proof obligations, defeaters, source observations, frozen policy, gate failures, next command families, and five recent event headers. No event replay is used. Scoped investigator resume exposes immutable starting context and only its own findings. Entity lists and lane/claim checks expose detailed current state. Pagination and large-context budgeting remain deferred.
+Resume includes `research_activities` and `research_reports` so captured observations
+and their immutable artifact paths survive a session change without relying on chat.
+These are attributed research records, not admitted claims or independent corroboration.
+Resume also projects normalized questions, needs, lanes, leads, claims, proof obligations, defeaters, source observations, frozen policy, gate failures, next command families, and five recent event headers. No event replay is used. Scoped investigator resume exposes immutable starting context and only its own findings. Entity lists and lane/claim checks expose detailed current state. Pagination and large-context budgeting remain deferred.
 
 ## Phases 3–4 and isolated investigators
 

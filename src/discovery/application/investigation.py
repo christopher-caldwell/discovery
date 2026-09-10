@@ -2,11 +2,29 @@ import json
 import sqlite3
 from pathlib import Path
 
+from discovery.adapters.filesystem.artifacts import capture
 from discovery.adapters.sqlite.queries import state
 from discovery.adapters.sqlite.records import entity, resolve
 from discovery.domain.encoding import now
 from discovery.domain.errors import require
 from discovery.domain.investigation import lane_violations
+
+
+def complete_record(con: sqlite3.Connection, surface_id: int, method_id: int | None, data: dict):
+    """Apply explicit completion reasons after the validated activity has been inserted."""
+    if data.get("complete_surface"):
+        con.execute(
+            "UPDATE research_surface SET disposition='searched', disposition_reason=?, "
+            "dt_dispositioned=?, dt_modified=? WHERE research_surface_id=?",
+            (data["complete_surface"], now(), now(), surface_id),
+        )
+    if data.get("complete_method"):
+        require(method_id is not None, "INVALID_ARGUMENT", "Method completion needs --method.")
+        con.execute(
+            "UPDATE research_method SET disposition='completed', disposition_reason=?, "
+            "dt_modified=? WHERE research_method_id=?",
+            (data["complete_method"], now(), method_id),
+        )
 
 
 def reopen(con: sqlite3.Connection, lane_id: int) -> None:
@@ -288,6 +306,11 @@ def write(
                 "Method belongs to an inactive closure iteration.",
             )
         if name == "research.record":
+            require(
+                not data.get("complete_method") or method is not None,
+                "INVALID_ARGUMENT",
+                "Method completion needs --method.",
+            )
             artifact = entity(
                 con,
                 "artifact",
@@ -295,9 +318,9 @@ def write(
                 media_type="text/plain",
                 captured_by_actor_id=actor,
                 origin_uri=data["origin_uri"],
-                **prepared["artifact"],
+                **capture(root, prepared["content"]),
             )
-            return entity(
+            result = entity(
                 con,
                 "activity",
                 research_lane_id=lid,
@@ -309,6 +332,13 @@ def write(
                 result_summary=data["summary"],
                 result_artifact_id=artifact["id"],
             )
+            complete_record(
+                con,
+                target["research_surface_id"],
+                method["research_method_id"] if method else None,
+                data,
+            )
+            return result
         tid = target[f"research_{kind}_id"]
         disposition = data["disposition"]
         if disposition in ("searched", "completed"):
