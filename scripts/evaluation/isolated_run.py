@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import tomllib
+from datetime import UTC, datetime
 from pathlib import Path
 
 SYSTEM_READ = [
@@ -443,11 +444,104 @@ def integrity(root: Path) -> dict:
     return result
 
 
+class TimingRecorder:
+    """Observer timestamps, not model execution times or a judgment of report quality."""
+
+    def __init__(self, root: Path, manifest: dict, start: float):
+        self.root, self.start = root, start
+        self.work = Path(manifest["work"])
+        self.resume = Path(manifest["resume_run"]) if manifest.get("resume_run") else None
+        self.offset = 0
+        self.index = 0
+        self.previous = 0.0
+        self.first = {}
+        self.baseline = set(self.deliverables())
+        self.path = root / "control/timing.jsonl"
+        self.path.touch(exist_ok=False)
+
+    def deliverables(self):
+        for name, kind in (("outcome.md", "outcome"), ("answer.md", "final_answer")):
+            path = self.work / name
+            if path.is_file() and not path.is_symlink() and path.stat().st_size:
+                yield str(path), kind
+        runs = [self.work / "run"]
+        runs.extend((self.work / ".discovery/runs").glob("*"))
+        runs.extend((self.work / "source/.discovery/runs").glob("*"))
+        if self.resume:
+            runs.append(self.resume)
+        for run in runs:
+            for pattern, kind in (
+                ("reports/*/report.md", "interim_report"),
+                ("*/technical-spec.md", "technical_specification"),
+            ):
+                for path in (run / "exports").glob(pattern):
+                    if path.is_file() and not path.is_symlink() and path.stat().st_size:
+                        yield str(path), kind
+
+    def observe(self, *, final=False):
+        elapsed = time.monotonic() - self.start
+        stamp = {
+            "observed_elapsed_seconds": elapsed,
+            "observed_at_utc": datetime.now(UTC).isoformat(),
+            "previous_poll_elapsed_seconds": self.previous,
+        }
+        records = []
+        events = self.root / "control/events.jsonl"
+        if events.exists():
+            with events.open("rb") as stream:
+                stream.seek(self.offset)
+                for line in stream:
+                    if not line.endswith(b"\n") and not final:
+                        break
+                    self.index += 1
+                    record = {
+                        **stamp,
+                        "kind": "event",
+                        "event_index": self.index,
+                        "byte_offset": self.offset,
+                        "byte_length": len(line),
+                    }
+                    self.offset += len(line)
+                    try:
+                        event = json.loads(line)
+                        record["event_type"] = event.get("type")
+                        record["item_id"] = event.get("item", {}).get("id")
+                    except (ValueError, AttributeError):
+                        record["invalid_event"] = True
+                    records.append(record)
+        for path, kind in self.deliverables():
+            if (path, kind) not in self.baseline and kind not in self.first:
+                self.first[kind] = {**stamp, "path": path}
+                records.append(
+                    {**stamp, "kind": "delivery_candidate", "delivery": kind, "path": path}
+                )
+        with self.path.open("a") as stream:
+            for record in records:
+                stream.write(json.dumps(record) + "\n")
+            stream.flush()
+        self.previous = elapsed
+
+    def summary(self):
+        return {
+            "sidecar": "control/timing.jsonl",
+            "event_count": self.index,
+            "poll_interval_seconds": 0.25,
+            "first_observed": self.first,
+            "meaning": (
+                "Parent observation times; runtime buffering can delay events. "
+                "Delivery candidates are new nonempty files, "
+                "not verified useful or complete reports. "
+                "Pre-existing reports are excluded. Missing timings are unavailable, not zero."
+            ),
+        }
+
+
 def execute(root: Path, manifest: dict) -> None:
     control, work = root / "control", Path(manifest["work"])
     start = time.monotonic()
     timed_out = False
     try:
+        timing = TimingRecorder(root, manifest, start)
         with (control / "events.jsonl").open("w") as out, (control / "stderr.log").open("w") as err:
             process = subprocess.Popen(
                 ["/usr/bin/sandbox-exec", "-f", manifest["profile"], *manifest["command"]],
@@ -458,18 +552,29 @@ def execute(root: Path, manifest: dict) -> None:
                 stderr=err,
                 start_new_session=True,
             )
-            try:
-                process.communicate(
-                    (work / "request.txt").read_bytes(), timeout=manifest["timeout_seconds"]
-                )
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                os.killpg(process.pid, signal.SIGTERM)
+            input_bytes = (work / "request.txt").read_bytes()
+            while True:
+                remaining = manifest["timeout_seconds"] - (time.monotonic() - start)
+                if remaining <= 0:
+                    timed_out = process.poll() is None
+                    break
+                try:
+                    process.communicate(input_bytes, timeout=min(0.25, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    input_bytes = None
+                    timing.observe()
+            if timed_out:
+                try:
+                    os.killpg(process.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
                     os.killpg(process.pid, signal.SIGKILL)
                     process.wait()
+        timing.observe(final=True)
         usage = []
         for line in (control / "events.jsonl").read_text().splitlines():
             try:
@@ -483,6 +588,7 @@ def execute(root: Path, manifest: dict) -> None:
             "timed_out": timed_out,
             "elapsed_seconds": time.monotonic() - start,
             "usage_events": usage,
+            "timing": timing.summary(),
             "integrity_after": integrity(root),
         }
         if manifest.get("resume_run"):

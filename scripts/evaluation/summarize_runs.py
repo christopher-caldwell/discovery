@@ -45,6 +45,7 @@ def summarize(root: Path) -> dict:
         "timed_out": result.get("timed_out"),
         "model": manifest["configured_defaults"],
         "usage_events": result.get("usage_events", []),
+        "timing": result.get("timing"),
         "shell_commands": len(commands),
         "nonzero_shell_commands": sum(bool(c.get("exit_code")) for c in commands),
         "observed_json_envelopes": len(envelopes),

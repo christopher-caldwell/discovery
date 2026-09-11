@@ -175,3 +175,86 @@ def test_checkpoint_recovery_requires_real_denied_history(tmp_path, monkeypatch)
     assert harness.recovery_denial_probes(checkpoint, [Path("old-report.md")]) == [old_report]
     (checkpoint.parent / "outcome.md").write_text("Prior session outcome")
     assert harness.recovery_denial_probes(checkpoint, []) == [checkpoint.parent / "outcome.md"]
+
+
+def test_timing_preserves_partial_events_and_excludes_old_reports(tmp_path, monkeypatch):
+    work = tmp_path / "work"
+    control = tmp_path / "control"
+    control.mkdir()
+    old = work / ".discovery/runs/old/exports/reports/hash/report.md"
+    old.parent.mkdir(parents=True)
+    old.write_text("old report")
+    clock = [100.0]
+    monkeypatch.setattr(harness.time, "monotonic", lambda: clock[0])
+    recorder = harness.TimingRecorder(tmp_path, {"work": str(work)}, 100.0)
+    events = control / "events.jsonl"
+    complete = b'{"type":"item.started","item":{"id":"one"}}\n'
+    events.write_bytes(complete + b'{"type":')
+    clock[0] = 101.0
+    recorder.observe()
+    assert recorder.index == 1
+    assert recorder.first == {}
+    report = work / ".discovery/runs/new/exports/reports/new/report.md"
+    report.parent.mkdir(parents=True)
+    report.touch()
+    recorder.observe()
+    assert recorder.first == {}
+    report.write_text("candidate for human review")
+    technical = work / "run/exports/spec/technical-spec.md"
+    technical.parent.mkdir(parents=True)
+    technical.write_text("technical specification candidate")
+    with events.open("ab") as stream:
+        stream.write(b'"item.completed"}\nunfinished')
+    clock[0] = 102.0
+    recorder.observe()
+    recorder.observe(final=True)
+    rows = [json.loads(line) for line in recorder.path.read_text().splitlines()]
+    recorded = [r for r in rows if r["kind"] == "event"]
+    assert [r["event_index"] for r in recorded] == [1, 2, 3]
+    assert recorded[-1]["invalid_event"] is True
+    assert sum(r["byte_length"] for r in recorded) == events.stat().st_size
+    assert recorded[1]["byte_offset"] == len(complete)
+    assert recorder.first["interim_report"]["observed_elapsed_seconds"] == 2
+    assert recorder.first["interim_report"]["path"] == str(report)
+    assert recorder.first["technical_specification"]["path"] == str(technical)
+
+
+@pytest.mark.parametrize("timeout", [False, True])
+def test_execute_records_live_delivery_and_keeps_timeout_cleanup(tmp_path, monkeypatch, timeout):
+    import subprocess
+
+    work = tmp_path / "work"
+    (tmp_path / "control").mkdir()
+    work.mkdir()
+    (work / "request.txt").write_text("test input")
+    auth = tmp_path / "home/.codex/auth.json"
+    auth.parent.mkdir(parents=True)
+    auth.write_text("test sentinel")
+    # Exercise the real process/pipe/timeout loop without requiring model credentials.
+    original_popen = subprocess.Popen
+    monkeypatch.setattr(
+        harness.subprocess, "Popen", lambda argv, **kw: original_popen(argv[3:], **kw)
+    )
+    script = """import sys, pathlib, time, json
+assert sys.stdin.read() == 'test input'
+print(json.dumps({'type': 'item.started'}), flush=True)
+pathlib.Path('outcome.md').write_text('early candidate')
+time.sleep(0.6)
+print(json.dumps({'type': 'item.completed'}), flush=True)
+"""
+    manifest = {
+        "work": str(work),
+        "profile": "unused-test-profile",
+        "env": dict(harness.os.environ),
+        "command": [sys.executable, "-c", script],
+        "timeout_seconds": 0.4 if timeout else 3,
+    }
+    harness.execute(tmp_path, manifest)
+    result = json.loads((tmp_path / "control/result.json").read_text())
+    assert result["timed_out"] is timeout
+    assert result["timing"]["first_observed"]["outcome"]["observed_elapsed_seconds"] < 0.5
+    assert result["timing"]["event_count"] == (1 if timeout else 2)
+    assert result["exit_code"] != 0 if timeout else result["exit_code"] == 0
+    assert not auth.exists()
+    raw = (tmp_path / "control/events.jsonl").read_text()
+    assert "observed_elapsed_seconds" not in raw
