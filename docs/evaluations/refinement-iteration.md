@@ -113,7 +113,7 @@ it does not establish physical IO behavior or production occurrence. The experim
 was recorded as failed, not a passing proof. No target source changed.
 
 The new receipt/finish made CA-001 stale, as intended. The post-probe report labels
-it historical rather than silently upgrading its rating; audit159 remains valid
+it historical rather than silently upgrading its rating; audit of 159 events remains valid
 with no orphans. This disposable proposal remains in Phase 3 with a confirmed
 finding and unresolved proof. Repairing this target proposal is not the objective
 of this CLI implementation iteration.
@@ -123,8 +123,30 @@ in the same old draft. Its category limitations were explicit, but twelve comple
 categories do not establish exhaustive challenge. Evidence-review guidance now
 asks reviewers to compare accepted inputs and starting states with examined cases,
 trace downstream special meanings, and distinguish an actual scope exclusion from
-an unvalidated assumption. A separately seeded focused repeat tests that guidance;
-it must not be presented as a blind full-workflow repeat.
+an unvalidated assumption. The separately seeded focused `boundary-review-1` completed in 226.2 seconds,
+using 914,595 input tokens (854,144 cached) and 6,194 output tokens. It found both
+special-filename durability and existing-schema collation counterexamples, recorded
+two distinct confirmed defeaters, and regressed to Phase 3. It left all twelve
+challenge checks uncompleted rather than overstating a focused review. The audit
+had 133 valid events, no orphans, and unchanged frozen runtime/source/ticket hashes.
+The earlier run/report remained outside its read boundary.
+
+This repeat changed both review guidance and task focus, so the improvement cannot
+be attributed to guidance alone. It is not a blind full-workflow repeat. It fetched
+primary library documentation but captured the synthesized report as secondary
+evidence, accurately labeling deductions as static and new runtime probes pending.
+The earlier campaign's independent runtime findings are corroborating evaluator
+knowledge, not observations this model made. No new target repair or duplicate
+runtime campaign was needed to evaluate this focused use of the CLI.
+
+The run first tried `research record` in Phase 4 and received a misleading generic
+instruction to regress. It recovered using artifact/evidence/defeater commands.
+The error and guide now name those phase-appropriate alternatives rather than
+encouraging regression merely to save a review. The gate itself is unchanged.
+
+Cumulative input remains substantial even for this focused review. This iteration
+provides better delivery and coverage in specific runs; it does not establish a
+stable model-cost ceiling or exhaustive defect discovery.
 
 ## Evaluation setup corrections
 
@@ -156,8 +178,8 @@ transaction tests remain separate from claims about model research quality.
 The integrated suite passed **152 tests** across the application, isolation harness
 and restricted experiment runner. Ruff checks and formatting passed; the skill
 validator passed. Direct skill, personal plugin source and installed plugin skill
-were byte-compared with the checkout. Active executable reports release0.2.0,
-schema6. No base release version was incremented. Raw ledgers and test sessions
+were byte-compared with the checkout. Active executable reports release 0.2.0,
+schema 6. No base release version was incremented. Raw ledgers and test sessions
 remain ignored and are not committed.
 
 ## Evidence locations
@@ -167,6 +189,7 @@ Raw, ignored evidence lives under `.discovery/scenario-campaign/`:
 - `sessions/simple-cost-baseline-1`, `simple-cost-candidate-1`, `simple-cost-candidate-2`
 - `sessions/confidence-unavailable-1` and subsequent separately named repeats
 - `sessions/canonical-review-1`, `canonical-review-2` (setup failures), `canonical-review-3`
+- `sessions/boundary-review-1`, `evaluator/iteration-2/boundary-seed`
 - `evaluator/iteration-2/cold-results.json`, `context-size.json`, prompts and frozen baseline
 
 Session manifests preserve frozen inputs and isolation checks; result files preserve

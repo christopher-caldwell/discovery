@@ -142,8 +142,14 @@ observations, code changes and raw evidence paths.
 | Observable | New observation | Limit |
 | --- | --- | --- |
 | S01/S05/S20 simple answer | Same-input old baseline and two fresh candidates answered correctly; candidates recorded less redundant research and lower measured cost | Only one baseline and two candidates; no deterministic model budget enforcement |
-| S07/S19 unavailable evidence | First run saved unresolved confidence but missed final delivery; fresh repeat delivered in207seconds with unknowns and no invented score | Similar example exists in skill guidance; not unseen-domain calibration |
-| S13/S14 challenge/regression | One canonical defect linked six categories and triggered4→3; exact external probe corroborated its static prediction | Other previously observed boundary defects were not rediscovered; category completion is not exhaustiveness |
-| S15/S18 recovery | Compact recovery preserves gates; fresh selected checkpoint denied old report access; post-probe audit159valid | Seeded continuation intentionally includes selected prior research |
-| S17 investigator isolation | Schema6 write guard regression discovered and fixed; direct/import completed-check guards tested | No live multi-investigator semantic campaign in this iteration |
+| S07/S19 unavailable evidence | First run saved unresolved confidence but missed final delivery; fresh repeat delivered in 207 seconds with unknowns and no invented score | Similar example exists in skill guidance; not unseen-domain calibration |
+| S13/S14 challenge/regression | One canonical defect linked six categories and triggered 4→3; exact external probe corroborated its static prediction | Other previously observed boundary defects were not rediscovered; category completion is not exhaustiveness |
+| S15/S18 recovery | Compact recovery preserves gates; fresh selected checkpoint denied old report access; post-probe audit of 159 events valid | Seeded continuation intentionally includes selected prior research |
+| S17 investigator isolation | Schema 6 write guard regression discovered and fixed; direct/import completed-check guards tested | No live multi-investigator semantic campaign in this iteration |
 | S19 conclusion confidence | Structured ordinal assessments separate defect support from unresolved overall readiness; new receipt stales prior judgment | Attributed judgment, not calibrated probability or independent assessment review |
+
+The focused boundary follow-up found both earlier filename/schema counterexamples
+in 226 seconds, recorded two distinct findings and regressed while leaving the
+full checklist incomplete. This changed task focus as well as guidance, so it is
+not evidence of stable full-review recall. Its Phase 4 research-record rejection
+also prompted clearer CLI recovery guidance; the underlying phase gate is intact.

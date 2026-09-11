@@ -23,7 +23,13 @@ def write(
             )
         ),
         "WRONG_PHASE",
-        "Intent and plan edits require Phase 1; regress first.",
+        (
+            "research record applies to Phase 1 planning or Phase 2 lane surfaces. "
+            "In Phase 3/4, capture the report with artifact capture and link appropriate "
+            "evidence, proof or defeater records; do not regress merely to save a review."
+            if name == "research.record"
+            else "Intent and plan edits require Phase 1; regress first."
+        ),
     )
     revision = run["current_phase_revision_id"]
     provenance = {"phase_revision_id": revision, "created_by_actor_id": actor}

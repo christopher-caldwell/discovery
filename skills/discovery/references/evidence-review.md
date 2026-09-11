@@ -44,6 +44,9 @@ them appear correct in retrospect.
 
 Each configured category needs a specific attack or inspection, the target claim
 or decision, observed result, evidence references, and remaining limitations.
+`research record` applies only to Phase 1 planning and Phase 2 lane surfaces.
+In Phase 3/4, use `artifact capture` for the report and link the appropriate
+evidence, proof or defeater records. Do not regress solely to preserve a review.
 Use separate reports or clearly labeled category sections. A generic paragraph
 saying the probe passed does not show that security, performance and recovery
 were each examined. Static review can support a scoped conclusion; do not label
