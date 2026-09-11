@@ -23,13 +23,13 @@ def query(
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
         require(
-            con.execute("PRAGMA user_version").fetchone()[0] == 5
+            con.execute("PRAGMA user_version").fetchone()[0] in (5, 6)
             or (
                 name == "audit.verify"
                 and con.execute("PRAGMA user_version").fetchone()[0] in (3, 4)
             ),
             "SCHEMA_VERSION_UNSUPPORTED",
-            "Schema 5 required; use run upgrade for schema 3 or 4.",
+            "Schema 5 or 6 required for reads; use run upgrade for schema 3 or 4.",
         )
         require(
             con.execute("SELECT 1 FROM discovery_run").fetchone(),
@@ -66,6 +66,10 @@ def query(
                 "AGENT_SCOPE_REQUIRED",
                 "Use --agent-run and --lease for isolated context.",
             )
+        if name == "assessment.list":
+            from discovery.application.assessments import project
+
+            return project(state(con, root))
         if name.endswith(".list"):
             kind = name.split(".")[0]
             table, prefix = ENTITIES[kind]
@@ -194,14 +198,17 @@ def query(
             if run["current_phase_no"] == 4:
                 next_actions += [
                     "challenge initialize/complete",
-                    "defeater create/confirm/defeat",
+                    "defeater create/link-check/confirm/defeat",
                     "spec revise",
                     "assurance calculate",
                 ]
             if not violations:
                 next_actions.append("phase advance")
-        return {
+        from discovery.application.assessments import project
+
+        packet = {
             **result,
+            "confidence": project(snapshot),
             "policy": snapshot["policy"],
             "input_artifact_id": run["input_artifact_id"],
             "intent": "Request assertions and answered questions; intent extraction is deferred.",
@@ -234,6 +241,7 @@ def query(
             "adversarial_checks": snapshot["adversarial_check"],
             "proof_obligations": snapshot["proof_obligation"],
             "defeaters": snapshot["defeater"],
+            "defeater_checks": snapshot.get("defeater_check", []),
             "legal_next_actions": next_actions,
             "recent_events": [
                 dict(r)
@@ -243,6 +251,11 @@ def query(
                 )
             ],
         }
+        if scope and scope.get("compact"):
+            from discovery.application.context import compact_resume
+
+            return compact_resume(packet)
+        return packet
     finally:
         con.rollback()
         con.close()

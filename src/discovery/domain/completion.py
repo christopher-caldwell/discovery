@@ -262,6 +262,7 @@ def review_hash(state: dict) -> str:
                     "investigator_finding",
                     "technical_spec_revision",
                 )
+                + (("defeater_check",) if "defeater_check" in state else ())
             }
         ).encode()
     )

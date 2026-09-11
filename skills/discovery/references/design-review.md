@@ -1,0 +1,22 @@
+## Design, experiments, and adversarial refinement
+
+Phase 3 selects one strategy, records accepted decisions traced to admissible claims, and creates impact-preserving proof obligations. Use `strategy create/select/reject`, `decision create/accept/reject`, `obligation create/attach-evidence/attach-experiment/satisfy/fail/block/not-applicable`, and `requirement create`. Requirements link an answered need, a decision, acceptance criteria, and a verification plan. Do not disguise unresolved decisions or proofs as contextual to pass gates.
+
+`experiment plan` records a hypothesis and procedure. `experiment exec --command '["/usr/bin/python3","-c","print(123)"]'` copies the source baseline and executes in a macOS Seatbelt sandbox. Writes are limited to the copy and networking is denied. This is not a VM or protection against credential reads; the process can read filesystem content. Unsupported platforms fail closed. Do not execute untrusted arbitrary programs on the assumption that the copy alone isolates them. Additional output files stay in scratch and must be captured explicitly when needed as durable evidence.
+
+Inspect captured exit code, `output_limited`, stdout/stderr, hashes, and limitations, then record `experiment finish --outcome ... --conclusion ... --limitations ...`. A zero exit does not prove the hypothesis. Before accepting empirical proof, read [evidence-review.md](evidence-review.md) and map each material conclusion to its actual assertion, receipt observation, and limitation. Execution has separately audited reservation and receipt-registration transactions. Retry the same request to recover a recorded receipt, never to rerun. Output capture stops the process group when either stream exceeds 2,000,000 bytes; an output-limited result cannot pass. On `EXPERIMENT_INTERRUPTED`, inspect the existing scratch attempt and stop any surviving child process (a killed controller cannot clean it up), then abort it explicitly and create a replacement. Do not hide failed attempts or delete their records.
+
+Write substantive technical narrative and use `spec draft --narrative FILE`. Structured changes stale the draft. Phase 3 advances only after traceability and proof gates pass.
+
+For multiline probes, prepare a JSON argv file without shell quoting:
+
+```sh
+python3 /path/to/discovery/skill/scripts/prepare_experiment.py --script /absolute/probe.py --output /absolute/command.json
+discovery ... experiment exec EXP-001 --command-file /absolute/command.json
+```
+
+Resolve the helper relative to this skill. It embeds the exact script bytes, preserves the sandbox working directory, and refuses to overwrite a copied project file with the same basename. It only prepares argv; the CLI executes it. A source script already in the baseline can instead use a JSON argv file such as `["/usr/bin/python3", "probe.py"]`. Retain the command file unchanged for retries; edited bytes with the same request are a conflict. The interpreter must exist in the sandbox host environment.
+
+In Phase 4, use `challenge initialize` to create the configured checks against the exact draft. Try to break the design; submit actual reports with `challenge complete`. Read [evidence-review.md](evidence-review.md) for category-specific attacks, observations, and evidence limits; generic pass statements are insufficient. Findings need linked `defeater create` records targeting a claim or decision with evidence. When one defect affects several current review categories, create it once and use `defeater link-check DEF-001 --check CH-002 --reason "specific relevance"` for each additional check. Keep distinct defects separate. One canonical defect has one confirmation and resolution; category links are not independent confirmations. Links require the same exact draft and traversal. `defeater confirm` requires explicit regression before repair; `defeater defeat` needs distinct active resolution evidence and a report. Only contextual risks can be accepted. Revision with `spec revise` requires a fresh set of checks; prior defeaters are not erased.
+
+`assurance calculate` reports procedural coverage, not correctness probabilities. Scores never override gates. Phase 4 `phase advance` atomically compiles final artifacts, records scores, and finalizes the run. `spec export` materializes `technical-spec.md`, `discovery-summary.md`, `evidence-manifest.json`, and `handoff.json`. It does not submit work to Taskledger. Describe remaining limitations honestly even when all structural gates pass.

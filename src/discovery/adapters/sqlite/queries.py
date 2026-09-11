@@ -72,6 +72,13 @@ def state(con: sqlite3.Connection, root: Path) -> dict:
         "investigator_finding",
     ):
         result[table] = [dict(r) for r in con.execute(f"SELECT * FROM {table}")]
+    if con.execute("PRAGMA user_version").fetchone()[0] >= 6:
+        result["defeater_check"] = [dict(r) for r in con.execute("SELECT * FROM defeater_check")]
+        result["conclusion_assessment"] = [
+            dict(r) for r in con.execute("SELECT * FROM conclusion_assessment")
+        ]
+    else:
+        result["conclusion_assessment"] = []
     result["plan_sha256"] = digest(canonical(plan(con)).encode())
     result["reviews"] = [
         dict(r)

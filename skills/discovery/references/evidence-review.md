@@ -51,6 +51,16 @@ it a runtime test. Record unavailable evidence honestly and leave material
 unresolved findings blocking. A lower coverage score is preferable to an
 unsupported completion claim.
 
+Before completing a category with no finding, compare the proposal's accepted
+inputs and starting states with those actually examined. Trace normalization and
+delegation across library boundaries: an ordinary-looking argument may acquire
+special meaning downstream. Distinguish new state from reopening existing state,
+and identify which assumptions the implementation validates rather than merely
+expects. Choose a few cheap counterexamples for the material claims, not an
+unbounded edge-case inventory. A limitation in the review does not narrow the
+request's contract; if correctness depends on an unstated restriction, record the
+restriction as a design gap or question instead of silently accepting it.
+
 For consequential proofs, an independent reviewer should inspect the exact
 script, assertions and final draft without being told to confirm the author's
 conclusion. Account for the reviewer's actual scope; independence does not turn

@@ -42,9 +42,9 @@ class CommandStore:
                 initialize_schema(con)
             else:
                 require(
-                    version == 5 or (version in (3, 4) and name == "run.upgrade"),
+                    version == 6 or (version in (3, 4, 5) and name == "run.upgrade"),
                     "SCHEMA_VERSION_UNSUPPORTED",
-                    "Schema 5 required; use run upgrade for schema 3 or 4.",
+                    "Schema 6 required for writes; use run upgrade for schema 3, 4 or 5.",
                 )
             exists = con.execute("SELECT * FROM discovery_run").fetchone()
             if exists:

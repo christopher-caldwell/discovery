@@ -161,3 +161,17 @@ def test_recovery_boundary_permits_only_selected_durable_state(tmp_path):
     assert len(result["checks"]) == 3
     assert (args.source / "source.py").read_text() == "print('source')"
     assert not list(args.resume_run.glob("isolation-probe-*"))
+
+
+def test_checkpoint_recovery_requires_real_denied_history(tmp_path, monkeypatch):
+    checkpoint = tmp_path / "snapshot" / "run"
+    checkpoint.mkdir(parents=True)
+    with pytest.raises(ValueError, match="deny-probe"):
+        harness.recovery_denial_probes(checkpoint, [tmp_path / "missing.md"])
+    old_report = tmp_path / "old-report.md"
+    old_report.write_text("Evaluator knowledge must not reach the resumed model")
+    assert harness.recovery_denial_probes(checkpoint, [old_report]) == [old_report]
+    monkeypatch.chdir(tmp_path)
+    assert harness.recovery_denial_probes(checkpoint, [Path("old-report.md")]) == [old_report]
+    (checkpoint.parent / "outcome.md").write_text("Prior session outcome")
+    assert harness.recovery_denial_probes(checkpoint, []) == [checkpoint.parent / "outcome.md"]

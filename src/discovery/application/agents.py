@@ -506,6 +506,9 @@ def write(
                     "Check must target the group spec.",
                 )
                 require(
+                    check["check_status"] == "pending", "INVALID_STATE", "Check already completed."
+                )
+                require(
                     f["claim_id"] or f["technical_decision_id"],
                     "TARGET_REQUIRED",
                     "Adversarial finding needs a claim or decision target.",
@@ -519,6 +522,9 @@ def write(
                     impact=f["impact"],
                     created_by_actor_id=actor,
                 )
+                from discovery.application.adversarial import record_check_link
+
+                record_check_link(con, defeater["id"], check["adversarial_check_id"], actor)
                 if f["claim_id"]:
                     con.execute(
                         "INSERT INTO defeater_claim VALUES (?,?)", (defeater["id"], f["claim_id"])
@@ -602,7 +608,7 @@ def guard(con: sqlite3.Connection, name: str, logical: dict, actor: dict, prior:
         )
     elif (
         name not in ("run.init", "run.upgrade", "agent.start", "agent.reclaim")
-        and con.execute("PRAGMA user_version").fetchone()[0] == 5
+        and con.execute("PRAGMA user_version").fetchone()[0] >= 5
     ):
         active = con.execute(
             (

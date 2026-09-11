@@ -45,7 +45,7 @@ personal plugin source:
   /Users/christophercaldwell/plugins/discovery
 
 installed plugin cache:
-  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260910223254
+  /Users/christophercaldwell/.codex/plugins/cache/personal/discovery/0.2.0+codex.20260911003553
 
 plugin identifier:
   discovery@personal (installed and enabled)
@@ -65,8 +65,8 @@ skills/discovery/SKILL.md       metadata.version
 .codex-plugin/plugin.json      version
 ```
 
-The current release is `0.2.0`; its SQLite schema is version `5`. Release version
-and schema version are different contracts. Schema 3/4 runs require explicit upgrade to schema 5; unsupported versions
+The current release is `0.2.0`; its SQLite schema is version `6`. Release version
+and schema version are different contracts. Active schema 3/4/5 runs require explicit upgrade to schema 6; finalized schema 5 runs remain readable; unsupported versions
 are rejected, never reset. A local plugin cache suffix such as
 `+codex.20260910162056` changes cache identity, not CLI or database semantics.
 
@@ -114,7 +114,7 @@ python3 -m pip show discovery-cli
 For this pip-owned installation the two version commands must return:
 
 ```json
-{"ok":true,"result":{"schema_version":5,"version":"0.2.0"}}
+{"ok":true,"result":{"schema_version":6,"version":"0.2.0"}}
 ```
 
 For a uv-owned installation, run the module/metadata checks with that tool

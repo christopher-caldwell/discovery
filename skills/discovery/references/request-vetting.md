@@ -34,6 +34,13 @@ show the difference between ephemeral advice and a durable reviewed artifact;
 do not select storage tables before that distinction is resolved. Continue independent
 research that helps frame the question, but defer detail likely to be invalidated.
 
+Once the supplied evidence establishes a blocking boundary, record the focused
+observations and questions and export the interim answer. Completing every
+planning surface is not required for that delivery. Continue a missing surface
+only when it could change the answer or identify who can resolve the blocker;
+preserve other unfinished work as pending rather than spending the delivery
+budget classifying it.
+
 Separate those human decisions from technical choices the request delegates to the
 proposal. An unspecified storage interface or transaction boundary is not automatically
 a Phase 1 blocker: research alternatives and propose a justified choice when the

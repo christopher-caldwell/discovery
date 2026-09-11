@@ -41,7 +41,7 @@ def parser() -> Parser:
     p.add_argument(
         "--version",
         action="version",
-        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 5}}),
+        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 6}}),
     )
     p.add_argument("--json", action="store_true")
     p.add_argument(
@@ -56,7 +56,17 @@ def parser() -> Parser:
     p.add_argument("--lease", type=text)
     families = p.add_subparsers(dest="family", required=True)
     for simple in ("status", "resume"):
-        families.add_parser(simple).set_defaults(command=simple)
+        command = families.add_parser(simple)
+        command.set_defaults(command=simple)
+        if simple == "resume":
+            command.add_argument(
+                "--compact",
+                action="store_true",
+                help=(
+                    "Omit embedded execution payloads and export bundles; "
+                    "retain recovery state and references."
+                ),
+            )
     for family, operations in {
         **FAMILIES,
         "report": ["export"],

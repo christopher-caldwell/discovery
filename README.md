@@ -2,7 +2,7 @@
 
 A deterministic Python CLI for turning request assertions into a durable, reviewable research plan. SQLite owns workflow state; models and humans supply attributed semantic judgments.
 
-**All four phases can now traverse through finalization.** Discovery supports intent clarification, evidence and claim investigation, leased partitioned/overlap investigators, strategies and proofs, isolated experiments, adversarial defeaters, and structured specification exports. The project is still iterating at **0.2.0**; the storage format is **schema 5**. See [the completion workflow](docs/completion-workflow.md) for the new commands and current boundaries.
+**All four phases can now traverse through finalization.** Discovery supports intent clarification, evidence and claim investigation, leased partitioned/overlap investigators, strategies and proofs, isolated experiments, adversarial defeaters, and structured specification exports. The project is still iterating at **0.2.0**; the storage format is **schema 6**. See [the completion workflow](docs/completion-workflow.md) for the new commands and current boundaries.
 
 ## Install and validate
 
@@ -46,7 +46,7 @@ The run directory is explicit; its name need not equal the generated run UUID. E
 
 | Command | Purpose |
 | --- | --- |
-| `run init/upgrade` | Initialize a run or explicitly upgrade schema 3/4 while preserving its audit history |
+| `run init/upgrade` | Initialize a run or explicitly upgrade active schema 3/4/5 while preserving its audit history |
 | `status`, `resume` | Read current state, observed drift, gates, next actions; resume also exposes research observations and captured report paths |
 | `question create/list/resolve` | Record questions, authority hypotheses, and attributed answers |
 | `research-need create/list/answer` | Record needs traced to the request artifact |
@@ -99,7 +99,9 @@ Failure: `{"ok":false,"error":{"code":"...","message":"...","details":{...}}}`. 
 
 ## Existing runs
 
-Use `audit verify` to inspect a schema 3/4 run, then execute `run upgrade` with the normal request/actor flags. Upgrade is explicit, transactional, idempotent, and preserves historical events and the frozen policy. A current Phase 1 review may need repeating because the plan records gain fields. Do not reset a run to upgrade it.
+Use `audit verify` to inspect a schema 3/4/5 run, then execute `run upgrade` with the normal request/actor flags. Upgrade is explicit, transactional, idempotent, and preserves historical events and the frozen policy. A current Phase 1 review may need repeating because the plan records gain fields. Do not reset a run to upgrade it. Finalized schema 5 runs remain readable and exportable without an upgrade.
+
+Schema 6 adds [shared review findings](docs/canonical-defeaters.md) and attributed conclusion assessments. `resume --compact` omits repeated execution payloads while keeping recovery state and references; plain `resume` retains the full representation.
 
 ## Next slice
 

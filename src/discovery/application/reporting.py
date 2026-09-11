@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from discovery.adapters.filesystem.artifacts import atomic_write
+from discovery.application import assessments
 from discovery.domain.encoding import canonical, digest
 from discovery.domain.errors import require
 from discovery.domain.gates import phase_violations
@@ -17,11 +18,7 @@ def export_report(root: Path, snapshot: dict, audit: dict) -> dict:
         "audit_event_count": audit["event_count"],
         "audit": audit,
         "gate": {"can_advance": not violations, "violations": violations},
-        "confidence": {
-            "status": "not_assessed",
-            "score": None,
-            "reason": "Procedural records do not establish confidence in a technical conclusion.",
-        },
+        "confidence": assessments.project(snapshot),
         "state": snapshot,
     }
     encoded = canonical(packet).encode()
@@ -56,7 +53,14 @@ def export_report(root: Path, snapshot: dict, audit: dict) -> dict:
     request = artifacts[run["input_artifact_id"]]
     request_text = (root / request["storage_path"]).read_text(encoding="utf-8", errors="replace")
     lines += ["> " + line for line in request_text.splitlines()]
-    lines += ["", artifact_label(run["input_artifact_id"]), "", "## Unresolved questions", ""]
+    lines += [
+        "",
+        artifact_label(run["input_artifact_id"]),
+        "",
+        assessments.markdown(snapshot),
+        "## Unresolved questions",
+        "",
+    ]
     questions = [q for q in snapshot["clarification_question"] if q["question_status"] == "open"]
     for q in questions:
         lines += [
@@ -98,6 +102,18 @@ def export_report(root: Path, snapshot: dict, audit: dict) -> dict:
         ]
     if not snapshot["claim"]:
         lines += ["No claims registered for formal evidence evaluation."]
+    if snapshot.get("defeater_check"):
+        lines += ["", "## Canonical adversarial findings", ""]
+        for d in snapshot["defeater"]:
+            checks = ", ".join(
+                f"CH-{link['adversarial_check_id']:03d}"
+                for link in snapshot["defeater_check"]
+                if link["defeater_id"] == d["defeater_id"]
+            )
+            lines += [
+                f"- DEF-{d['defeater_id']:03d} ({d['defeater_status']}): {d['challenge']}",
+                f"  Checks: {checks}. Resolution: {d['resolution'] or 'None recorded'}.",
+            ]
     lines += ["", "## Source observations", ""]
     for source in snapshot["sources"]:
         lines += [
@@ -107,11 +123,7 @@ def export_report(root: Path, snapshot: dict, audit: dict) -> dict:
         ]
     lines += [
         "",
-        "## Confidence and limitations",
-        "",
-        "Conclusion confidence: **not assessed by this export**; no numeric score is assigned. "
-        "Any confidence expressed in authored research remains an attributed judgment. "
-        "Procedural coverage must not be substituted for confidence in the answer.",
+        "## Report limitations",
         "",
         "The companion report.json preserves the structured snapshot, including answers, "
         "evidence links, verification records and pending work. Artifact paths are relative "

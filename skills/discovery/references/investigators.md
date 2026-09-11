@@ -1,0 +1,9 @@
+## Leased investigators
+
+For Phase 2 use `group dispatch --lane L-001 --count N`; Phase 4 omits `--lane` and targets the current draft. Partitioned groups contain one investigator, overlap groups 2–8. Each replica must receive an actor UUID distinct from the orchestrator and other replicas, an independent session, and a fresh random lease of at least 32 characters. Do not put the raw lease into authored reports or shared prompts; give it only to its worker.
+
+Start with global `--lease TOKEN` before `agent start AR-001`. The CLI stores only its hash. Give each worker `--agent-run AR-001 --lease TOKEN resume` and its immutable context. Do not share sibling findings or your preferred conclusion. Workers submit `agent finding` with `support`, `refute`, `not_seen`, or `unique`, source/report provenance, and impact; Phase 4 accepts challenges or `not_seen`. Use `agent heartbeat` during long read-only work and `agent complete --outcome ... --report FILE` at the end. Expired leases require `agent reclaim` with a new token; stale tokens cannot write.
+
+Workers submit isolated findings rather than canonical mutations. Scope is enforced through these CLI interfaces, not authenticated against someone deliberately inventing another actor or reading the shared filesystem directly. Keep workers on their provided context and source scope.
+
+Only after every requested replica completes may the orchestrator run `finding reconcile` and `group reconcile`. Substantive findings become leads or defeaters; `not_seen` is not a negative vote. Imported reports are secondary evidence requiring direct corroboration and semantic verification. A credible material refutation contests the claim regardless of supporting counts. If a replica fails, supersede the group with a reason and dispatch a new group; do not reduce the denominator to claim consensus.

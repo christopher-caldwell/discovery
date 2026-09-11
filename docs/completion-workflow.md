@@ -2,7 +2,7 @@
 
 Global identity/request flags precede each mutation. Read commands need only
 `--run` and `--json`. The release remains 0.2.0 during iteration; the current
-storage format is schema 5. Existing schema 3/4 runs use explicit `run upgrade`.
+storage format is schema 6. Active schema 3/4/5 runs use explicit `run upgrade`; finalized schema 5 runs remain readable.
 
 ## Phase 3
 
@@ -170,3 +170,10 @@ gates. It exports current records, questions, source freshness and unfinished wo
 without changing run state. The report labels authored observations separately from
 registered claims and leaves conclusion confidence unassessed. It is not a shortcut
 to a final technical specification or a standalone archive of artifact bytes.
+
+
+One defect can be linked to several current checks without duplicate records; see
+[canonical findings](canonical-defeaters.md). Optional conclusion assessments are
+attributed support ratings, separate from procedural assurance. Use
+`assessment record --file FILE` and `assessment list`; see the
+[assessment guide](../skills/discovery/references/confidence.md).

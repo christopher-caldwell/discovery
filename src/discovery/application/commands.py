@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from discovery.adapters.sqlite.connection import upgrade_schema
 from discovery.application import (
     adversarial,
     agents,
+    assessments,
     claims,
     design,
     experiments,
@@ -61,6 +63,11 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         if name == "plan.review":
             snapshot = query(root, "plan.snapshot")
             prepared["context"] = capture(root, canonical(snapshot["context"]).encode())
+    elif name == "assessment.record":
+        try:
+            data["assessment"] = json.loads(Path(data.pop("file")).read_text())
+        except (ValueError, UnicodeError) as exc:
+            require(False, "INVALID_ARGUMENT", f"Assessment must be valid UTF-8 JSON: {exc}")
     elif name == "artifact.capture":
         path = Path(data["file"]).resolve()
         data["file"] = str(path)
@@ -95,12 +102,14 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
             return initialize(con, aid, data, prepared["artifact"], prepared["source"])
         if name == "run.upgrade":
             require(
-                con.execute("PRAGMA user_version").fetchone()[0] in (3, 4),
+                con.execute("PRAGMA user_version").fetchone()[0] in (3, 4, 5),
                 "INVALID_STATE",
-                "Run already uses schema 5.",
+                "Run already uses schema 6.",
             )
             upgrade_schema(con)
-            return {"schema_version": 5}
+            return {"schema_version": 6}
+        if name == "assessment.record":
+            return assessments.record(con, aid, data["assessment"], root)
         if name.startswith(("agent.", "group.", "finding.")):
             return agents.write(con, aid, name, data, prepared, root)
         if name.startswith(("strategy.", "decision.", "obligation.", "requirement.")):

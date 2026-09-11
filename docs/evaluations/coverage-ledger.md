@@ -132,3 +132,18 @@ review does not establish a model-cost benefit from the renderer change.
 Final audit: 273 events, valid with no orphan artifacts. Target source and ticket
 hashes were unchanged. Details and export location are in
 [the completed continuation report](phase4-retry.md#completed-continuation-final-proposal-with-scoped-assurance).
+
+
+## Canonical findings, confidence and cost refinement
+
+See [refinement-iteration.md](refinement-iteration.md) for controls, negative
+observations, code changes and raw evidence paths.
+
+| Observable | New observation | Limit |
+| --- | --- | --- |
+| S01/S05/S20 simple answer | Same-input old baseline and two fresh candidates answered correctly; candidates recorded less redundant research and lower measured cost | Only one baseline and two candidates; no deterministic model budget enforcement |
+| S07/S19 unavailable evidence | First run saved unresolved confidence but missed final delivery; fresh repeat delivered in207seconds with unknowns and no invented score | Similar example exists in skill guidance; not unseen-domain calibration |
+| S13/S14 challenge/regression | One canonical defect linked six categories and triggered4→3; exact external probe corroborated its static prediction | Other previously observed boundary defects were not rediscovered; category completion is not exhaustiveness |
+| S15/S18 recovery | Compact recovery preserves gates; fresh selected checkpoint denied old report access; post-probe audit159valid | Seeded continuation intentionally includes selected prior research |
+| S17 investigator isolation | Schema6 write guard regression discovered and fixed; direct/import completed-check guards tested | No live multi-investigator semantic campaign in this iteration |
+| S19 conclusion confidence | Structured ordinal assessments separate defect support from unresolved overall readiness; new receipt stales prior judgment | Attributed judgment, not calibrated probability or independent assessment review |

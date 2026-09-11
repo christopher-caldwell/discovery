@@ -1,6 +1,6 @@
 # Current implementation contract — Discovery 0.2
 
-This document and runtime schema 5 describe the implemented system. The unchanged `discovery-design-package/` is the historical handoff and future architectural target. All four phases can complete, including finalization; see the completion workflow for operating details.
+This document and runtime schema 6 describe the implemented system. The unchanged `discovery-design-package/` is the historical handoff and future architectural target. All four phases can complete, including finalization; see the completion workflow for operating details.
 
 ## Architecture and transaction authority
 
@@ -109,3 +109,9 @@ availability separately from advancement gates. An unmet phase gate does not
 prevent `report export`; the report preserves unfinished work and does not imply
 verified conclusions. This is an existing export capability made discoverable,
 not a separate answer-only completion state.
+
+
+Schema 6 adds shared finding/check associations and durable, attributed conclusion
+assessments. Schema 5 finalized records remain readable without history rewrites.
+Conclusion assessment validation checks shape, references and freshness; it does
+not certify the model judgment or turn ordinal support into a probability.

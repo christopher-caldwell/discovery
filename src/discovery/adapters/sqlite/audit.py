@@ -18,9 +18,14 @@ TABLES = (
 
 
 def state_hash(con: sqlite3.Connection) -> str:
+    tables = TABLES + (
+        ["defeater_check", "conclusion_assessment"]
+        if con.execute("PRAGMA user_version").fetchone()[0] >= 6
+        else []
+    )
     state = {
         table: sorted((dict(r) for r in con.execute(f"SELECT * FROM {table}")), key=canonical)
-        for table in TABLES
+        for table in tables
     }
     state["schema"] = [
         dict(r)

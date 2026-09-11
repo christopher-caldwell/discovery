@@ -238,6 +238,20 @@ def audit_snapshot(sb: Path, env: dict, work: Path, run: Path, output: Path) -> 
     )
 
 
+def recovery_denial_probes(resume_run: Path, explicit: list[Path]) -> list[Path]:
+    old_work = resume_run.parent
+    candidates = [old_work / name for name in ("request.txt", "outcome.md", "answer.md")]
+    candidates.append(old_work.parent / "control/events.jsonl")
+    candidates.extend(explicit)
+    existing = list(dict.fromkeys(p.resolve() for p in candidates if p.is_file()))
+    if not existing:
+        raise ValueError(
+            "Recovery requires an existing old-chat/report denial probe; "
+            "use --deny-probe for a checkpoint outside its original session layout"
+        )
+    return existing
+
+
 def prepare_created(args, root: Path) -> tuple[Path, dict]:
     work, home, control = root / "work", root / "home", root / "control"
     for p in (work, home, control, home / ".codex", home / "tmp"):
@@ -345,16 +359,12 @@ def prepare_created(args, root: Path) -> tuple[Path, dict]:
         p.write_text(os.urandom(32).hex())
         sentinels.append(p)
     # Real private roots are probed as well; temporary sentinels are never answers.
-    sentinels += args.deny_probe
+    sentinels += [p.resolve() for p in args.deny_probe]
     if resume_run:
         # A known old prompt always exists in campaign sessions; other old answers
         # and reports are denied even if they were not written by that operator.
-        old_work = resume_run.parent
-        candidates = [old_work / name for name in ("request.txt", "outcome.md", "answer.md")]
-        candidates.append(old_work.parent / "control/events.jsonl")
-        sentinels.extend(p for p in candidates if p.is_file())
-        if not any(p.is_file() for p in candidates):
-            raise ValueError("Recovery requires an existing old-chat/report denial probe")
+        sentinels.extend(recovery_denial_probes(resume_run, args.deny_probe))
+        sentinels = list(dict.fromkeys(sentinels))
     result = probe(sb, env, work, sentinels, source, ticket, resume_run)
     if resume_run:
         audit_snapshot(sb, env, work, resume_run, control / "audit-before.json")

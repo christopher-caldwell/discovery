@@ -19,9 +19,10 @@ FAMILIES = {
     "requirement": ["create", "list"],
     "experiment": ["plan", "list", "exec", "finish", "abort", "replace"],
     "challenge": ["initialize", "list", "complete"],
-    "defeater": ["create", "list", "confirm", "defeat", "accept-contextual-risk"],
+    "defeater": ["create", "list", "link-check", "confirm", "defeat", "accept-contextual-risk"],
     "spec": ["draft", "revise", "list", "snapshot", "export"],
     "assurance": ["calculate"],
+    "assessment": ["record", "list"],
 }
 
 
@@ -51,8 +52,17 @@ def arguments(cmd, name, text):
         "confirm",
         "defeat",
         "accept-contextual-risk",
+        "link-check",
     ):
         cmd.add_argument("ref", type=text)
+    if name == "assessment.record":
+        option(
+            "file",
+            help=(
+                "JSON conclusions with scope, disposition, support_level, evidence references, "
+                "limitations, unknowns, rationale, and would_change_with."
+            ),
+        )
     if name == "strategy.create":
         option("name")
         option("description")
@@ -101,8 +111,9 @@ def arguments(cmd, name, text):
                 "inaccessible",
             ],
         )
-    if name == "defeater.create":
+    if name in ("defeater.create", "defeater.link-check"):
         option("check")
+    if name == "defeater.create":
         option("text")
         cmd.add_argument("--claim", type=text)
         cmd.add_argument("--decision", type=text)
@@ -124,6 +135,7 @@ def arguments(cmd, name, text):
         "confirm",
         "defeat",
         "accept-contextual-risk",
+        "link-check",
     ):
         option("reason")
 

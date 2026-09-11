@@ -8,6 +8,14 @@ from discovery.domain.encoding import now
 from discovery.domain.errors import require
 
 
+def record_check_link(con, defeater_id, check_id, actor, reason="Original owning check"):
+    con.execute(
+        "INSERT INTO defeater_check "
+        "(defeater_id,adversarial_check_id,link_reason,linked_by_actor_id) VALUES (?,?,?,?)",
+        (defeater_id, check_id, reason, actor),
+    )
+
+
 def write(
     con: sqlite3.Connection, actor: int, name: str, data: dict, prepared: dict, root: Path
 ) -> dict:
@@ -17,7 +25,7 @@ def write(
     # Earlier phases may defeat a confirmed challenge after explicit regression and repair.
     require(phase == 4 or name == "defeater.defeat", "WRONG_PHASE", "Challenges require Phase 4.")
     spec = current_spec(snapshot)
-    if name.startswith("challenge.") or name == "defeater.create":
+    if name.startswith("challenge.") or name in ("defeater.create", "defeater.link-check"):
         require(
             spec and spec["structure_sha256"] == structure_hash(snapshot),
             "SPEC_STALE",
@@ -60,8 +68,8 @@ def write(
         if data["disposition"] == "completed_findings":
             require(
                 any(
-                    d["adversarial_check_id"] == c["adversarial_check_id"]
-                    for d in snapshot["defeater"]
+                    link["adversarial_check_id"] == c["adversarial_check_id"]
+                    for link in snapshot["defeater_check"]
                 ),
                 "DEFEATER_REQUIRED",
                 "Record linked defeaters first.",
@@ -98,6 +106,7 @@ def write(
             "SCOPE_MISMATCH",
             "Challenge targets a historical spec.",
         )
+        require(c["check_status"] == "pending", "INVALID_STATE", "Check already completed.")
         require(
             data.get("claim") or data.get("decision"),
             "TARGET_REQUIRED",
@@ -116,6 +125,7 @@ def write(
             impact=data["impact"],
             created_by_actor_id=actor,
         )
+        record_check_link(con, d["id"], c["adversarial_check_id"], actor)
         for kind, table in [("claim", "defeater_claim"), ("decision", "defeater_decision")]:
             if data.get(kind):
                 target = resolve(con, kind, data[kind])
@@ -127,6 +137,53 @@ def write(
         )
         return d
     d = resolve(con, "defeater", data["ref"])
+    if name == "defeater.link-check":
+        c = resolve(con, "challenge", data["check"])
+        owner = next(
+            check
+            for check in snapshot["adversarial_check"]
+            if check["adversarial_check_id"] == d["adversarial_check_id"]
+        )
+        require(
+            c["technical_spec_revision_id"]
+            == owner["technical_spec_revision_id"]
+            == spec["technical_spec_revision_id"]
+            and c["phase_revision_id"]
+            == owner["phase_revision_id"]
+            == d["phase_revision_id"]
+            == run["current_phase_revision_id"],
+            "SCOPE_MISMATCH",
+            "Defeater and check must target the same current spec and Phase 4 traversal.",
+        )
+        require(
+            isinstance(data["reason"], str) and data["reason"].strip(),
+            "INVALID_ARGUMENT",
+            "Explain why this canonical finding also covers the check.",
+        )
+        existing = con.execute(
+            "SELECT 1 FROM defeater_check WHERE defeater_id=? AND adversarial_check_id=?",
+            (d["defeater_id"], c["adversarial_check_id"]),
+        ).fetchone()
+        if existing:
+            return {
+                "uuid": d["defeater_uuid"],
+                "check_uuid": c["adversarial_check_uuid"],
+                "linked": False,
+                "status": d["defeater_status"],
+            }
+        require(c["check_status"] == "pending", "INVALID_STATE", "Check already completed.")
+        require(
+            d["defeater_status"] in ("open", "inconclusive", "confirmed"),
+            "INVALID_STATE",
+            "Cannot attach a terminal defeater to another check.",
+        )
+        record_check_link(con, d["defeater_id"], c["adversarial_check_id"], actor, data["reason"])
+        return {
+            "uuid": d["defeater_uuid"],
+            "check_uuid": c["adversarial_check_uuid"],
+            "linked": True,
+            "status": d["defeater_status"],
+        }
     require(
         d["defeater_status"] in ("open", "inconclusive", "confirmed"),
         "INVALID_STATE",

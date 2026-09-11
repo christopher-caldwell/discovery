@@ -5,6 +5,7 @@ from pathlib import Path
 from discovery.adapters.filesystem.artifacts import capture
 from discovery.adapters.sqlite.queries import state
 from discovery.adapters.sqlite.records import entity
+from discovery.application import assessments
 from discovery.domain.completion import (
     assurance,
     current_spec,
@@ -13,7 +14,7 @@ from discovery.domain.completion import (
     structure,
     structure_hash,
 )
-from discovery.domain.encoding import canonical
+from discovery.domain.encoding import canonical, digest
 from discovery.domain.errors import require
 
 
@@ -43,6 +44,7 @@ def markdown_structure(contents: dict, artifacts: dict) -> dict:
 def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False) -> dict:
     contents = structure(snapshot)
     report = assurance(snapshot) if final else None
+    confidence = assessments.project(snapshot, narrative_sha256=digest(narrative))
     artifacts = {a["artifact_id"]: a for a in snapshot["artifact"]}
     manifest = {
         "sources": snapshot["sources"],
@@ -59,7 +61,10 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
         "arguments": snapshot["argument"],
         "argument_evidence": snapshot["argument_evidence"],
     }
+    if "defeater_check" in snapshot:
+        manifest["defeater_checks"] = snapshot["defeater_check"]
     text = "# " + snapshot["run"]["run_title"] + "\n\n" + narrative.decode("utf-8") + "\n\n"
+    text += assessments.markdown(snapshot, narrative_sha256=digest(narrative))
     text += "## Structured technical requirements\n\n"
     decisions = {d["technical_decision_id"]: d for d in snapshot["technical_decision"]}
     groups = {}
@@ -98,6 +103,11 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
             {
                 "checks": snapshot["adversarial_check"],
                 "defeaters": snapshot["defeater"],
+                **(
+                    {"defeater_checks": snapshot["defeater_check"]}
+                    if "defeater_check" in snapshot
+                    else {}
+                ),
                 "assurance": report,
             },
             indent=2,
@@ -113,7 +123,10 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
         "proof_obligations": snapshot["proof_obligation"],
         "traceability": contents,
         "assurance": report,
+        "confidence": confidence,
     }
+    if "defeater_check" in snapshot:
+        handoff["defeater_checks"] = snapshot["defeater_check"]
     files = {
         "technical-spec.md": text.encode(),
         "evidence-manifest.json": canonical(manifest).encode(),
@@ -125,6 +138,7 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
             + canonical(
                 {
                     "assurance": report,
+                    "confidence": confidence,
                     "limitations": [
                         c["disposition_reason"]
                         for c in snapshot["adversarial_check"]

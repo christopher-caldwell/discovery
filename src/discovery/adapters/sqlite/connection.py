@@ -68,7 +68,11 @@ def enable_wal(con: sqlite3.Connection, timeout: int) -> None:
 
 def upgrade_schema(con: sqlite3.Connection) -> None:
     version = con.execute("PRAGMA user_version").fetchone()[0]
-    migrations = (["phase2_migration.sql"] if version == 3 else []) + ["completion_migration.sql"]
+    migrations = (
+        (["phase2_migration.sql"] if version == 3 else [])
+        + (["completion_migration.sql"] if version in (3, 4) else [])
+        + ["canonical_defeater_migration.sql"]
+    )
     script = "\n".join(Path(__file__).with_name(m).read_text() for m in migrations)
     statement = ""
     for line in script.splitlines(True):
