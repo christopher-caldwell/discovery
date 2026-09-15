@@ -23,13 +23,13 @@ def query(
         con.execute("PRAGMA query_only=ON")
         con.execute("BEGIN")
         require(
-            con.execute("PRAGMA user_version").fetchone()[0] in (5, 6)
+            con.execute("PRAGMA user_version").fetchone()[0] in (5, 6, 7)
             or (
                 name == "audit.verify"
                 and con.execute("PRAGMA user_version").fetchone()[0] in (3, 4)
             ),
             "SCHEMA_VERSION_UNSUPPORTED",
-            "Schema 5 or 6 required for reads; use run upgrade for schema 3 or 4.",
+            "Schema 5, 6, or 7 required for reads; use run upgrade for older active runs.",
         )
         require(
             con.execute("SELECT 1 FROM discovery_run").fetchone(),
@@ -157,9 +157,12 @@ def query(
             if run["current_phase_no"] == 1:
                 next_actions += [
                     "question create",
+                    "question assume/withdraw/reclassify/respondent-add",
+                    "assumption create/discharge/invalidate",
                     "question resolve",
                     "research-need create",
                     "lane create",
+                    "surface create",
                     "surface disposition",
                     "research record",
                     "plan snapshot",
@@ -174,10 +177,11 @@ def query(
                         "question resolve",
                         "lane activate",
                         "lead create",
-                        "research record",
+                        "research record/capture/finding",
                         "artifact capture",
                         "evidence create",
                         "claim create",
+                        "claim challenge",
                         "argument create",
                         "argument verify",
                         "claim evaluate",
@@ -197,7 +201,7 @@ def query(
                 ]
             if run["current_phase_no"] == 4:
                 next_actions += [
-                    "challenge initialize/complete",
+                    "challenge initialize/complete/review",
                     "defeater create/link-check/confirm/defeat",
                     "spec revise",
                     "assurance calculate",
@@ -205,6 +209,104 @@ def query(
             if not violations:
                 next_actions.append("phase advance")
         from discovery.application.assessments import project
+
+        investigator_actions = []
+        blockers = [
+            q
+            for q in snapshot["clarification_question"]
+            if q["question_status"] == "open" and q["is_blocking"]
+        ]
+        for question in blockers[:3]:
+            investigator_actions.append(
+                {
+                    "action": "resolve blocking intent question",
+                    "ref": f"Q-{question['clarification_question_id']:03d}",
+                    "why": question["question_text"],
+                }
+            )
+        if run["current_phase_no"] == 1 and not blockers:
+            pending_surfaces = [
+                surface
+                for surface in snapshot["research_surface"]
+                if surface["research_lane_id"] is None and surface["disposition"] == "pending"
+            ]
+            for surface in pending_surfaces[:3]:
+                investigator_actions.append(
+                    {
+                        "action": "investigate or disposition planning surface",
+                        "ref": f"S-{surface['research_surface_id']:03d}",
+                        "why": surface["surface_name"],
+                    }
+                )
+            if not pending_surfaces:
+                investigator_actions.append(
+                    {
+                        "action": "review the investigation plan",
+                        "ref": None,
+                        "why": "Check for missing questions and research avenues before Phase 2.",
+                    }
+                )
+        elif run["current_phase_no"] == 2:
+            for claim in snapshot["claim"]:
+                if claim["impact"] != "critical" or claim["claim_status"] in (
+                    "rejected",
+                    "superseded",
+                ):
+                    continue
+                failures = claim_violations(snapshot, claim)
+                if any(
+                    failure["code"] == "VERIFICATION_METHOD_REQUIRED"
+                    and "falsification" in failure["message"]
+                    for failure in failures
+                ):
+                    investigator_actions.append(
+                        {
+                            "action": "challenge critical claim",
+                            "ref": f"C-{claim['claim_id']:03d}",
+                            "why": "Record a substantive attempt to disprove this claim.",
+                        }
+                    )
+                    if len(investigator_actions) >= 3:
+                        break
+            for lane in snapshot["research_lane"]:
+                if len(investigator_actions) >= 3:
+                    break
+                if lane["lane_status"] != "procedurally_exhausted":
+                    investigator_actions.append(
+                        {
+                            "action": "answer focused research lane",
+                            "ref": f"L-{lane['research_lane_id']:03d}",
+                            "why": lane["lane_question"],
+                        }
+                    )
+                    if len(investigator_actions) >= 3:
+                        break
+        elif run["current_phase_no"] == 3:
+            investigator_actions.append(
+                {
+                    "action": "develop and validate the implementation recommendation",
+                    "ref": None,
+                    "why": "Compare alternatives, resolve proof obligations, and draft the spec.",
+                }
+            )
+        elif run["current_phase_no"] == 4:
+            investigator_actions.append(
+                {
+                    "action": "try to falsify the current proposal",
+                    "ref": None,
+                    "why": "Resolve or regress for substantive defeaters before finalization.",
+                }
+            )
+        if not violations and run["run_status"] == "active":
+            investigator_actions.append(
+                {
+                    "action": "advance one phase",
+                    "ref": None,
+                    "why": "The procedural gate is satisfied; semantic judgment still applies.",
+                }
+            )
+        if run["run_status"] != "active":
+            investigator_actions = []
 
         packet = {
             **result,
@@ -218,7 +320,10 @@ def query(
                 ).fetchone()
             ),
             "questions": snapshot["clarification_question"],
+            "question_respondents": snapshot["question_respondent"],
             "assumptions": snapshot["assumption"],
+            "assumption_claims": snapshot.get("assumption_claim", []),
+            "assumption_decisions": snapshot.get("assumption_decision", []),
             "research_needs": snapshot["research_need"],
             "research_activities": snapshot["research_activity"],
             "research_reports": [
@@ -233,6 +338,7 @@ def query(
             "evidence": snapshot["evidence"],
             "arguments": snapshot["argument"],
             "research_methods": snapshot["research_method"],
+            "research_surfaces": snapshot["research_surface"],
             "strategies": snapshot["implementation_strategy"],
             "decisions": snapshot["technical_decision"],
             "requirements": snapshot["technical_requirement"],
@@ -242,6 +348,7 @@ def query(
             "proof_obligations": snapshot["proof_obligation"],
             "defeaters": snapshot["defeater"],
             "defeater_checks": snapshot.get("defeater_check", []),
+            "investigator_actions": investigator_actions,
             "legal_next_actions": next_actions,
             "recent_events": [
                 dict(r)

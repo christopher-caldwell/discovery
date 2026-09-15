@@ -224,3 +224,103 @@ These semantic checks remain attributed model work, not a keyword-based code gat
 A deterministic replay of the simple evaluation used 31 rather than 35 CLI calls
 with the same unfinished research status. It is not evidence of a cold-model speedup
 or a calibrated confidence score. No release/schema increment is needed.
+
+## 020 — Product realignment and schema 7
+
+The original contract included explicit assumptions, ranked respondent hypotheses,
+and investigator-added Phase-1 surfaces, but the operating path never exposed them.
+Schema 7 activates those existing concepts and adds scoped invalidation conditions,
+attributed authority candidates, and dependency links from assumptions to claims and
+decisions. Invalidating an assumption makes linked claims/lanes and accepted decisions
+stale; it never deletes history or silently regresses a phase.
+Assumption impact must meet the impact of every linked conclusion, and a critical
+decision requires an admissible critical claim. Resolving an assumed question now
+requires the caller to declare confirmation or contradiction; contradiction applies
+the dependent-invalidation path in the same transaction.
+
+Claim admission no longer derives every verification requirement from impact alone.
+Impact retains evidence and challenge floors. The investigator also selects a narrow
+verification method—inspection, analysis, authoritative record, test, or experiment—
+and records why it applies and whether it is available. Authoritative records require
+primary evidence; tests and experiments require empirical evidence. Critical claims
+still require falsification, but an intent claim is not forced through an irrelevant
+runtime experiment.
+
+The method vocabulary follows NASA's
+[product-verification guidance](https://www.nasa.gov/reference/5-3-product-verification/),
+which separates analysis, inspection, demonstration, and test. The CLI records and
+checks the chosen category; an attributed reviewer still owns semantic applicability.
+
+`research capture` bundles one saved result, its activity, and explicitly classified
+observations in one transaction. It does not create/admit claims, verify arguments,
+complete closure, or advance a phase. New captured evidence invalidates an active
+closure sweep, matching lower-level evidence creation. Lower-level commands remain
+available.
+
+Restricted experiments retain macOS Seatbelt and never fall back. Trusted-local is a
+separate explicit macOS/Linux mode for reviewed commands in disposable copies. Its
+receipt says that no OS security boundary is enforced and records post-run source
+comparison with its exclusions and detection limitations. It also attests the host
+platform and adapter and rejects unsupported operating systems. This improves
+portability without claiming a copied directory is a sandbox. A hardened Linux
+sandbox and Windows execution remain outside this pass.
+
+Python's [subprocess documentation](https://docs.python.org/3/library/subprocess.html)
+defines execution controls such as working directory and environment; those controls
+are not represented here as confinement. Likewise, a Git
+[linked worktree](https://git-scm.com/docs/git-worktree) shares repository state, so
+worktree structure alone would not establish an isolation boundary.
+
+Compatibility is explicit: active schema 3–6 runs upgrade transactionally; finalized
+schema 5/6 runs remain readable and immutable. Migrated claim verification is marked
+unavailable rather than inventing a method result, and old unscoped assumptions block
+until repaired. Release remains 0.2.0 because this is continued development, not a
+release-numbering exercise.
+
+## 021 — Restore the investigator as the primary product experience
+
+The current [product intent](product-intent.md) makes the boundary explicit: the model
+owns meaning and the CLI preserves consequential guardrails. Existing normalized
+state, artifacts, idempotency, audit history, four phases, regression, evidence graphs,
+and investigator reconciliation remain because they support durable trust.
+
+The ordinary workflow now hides avoidable bookkeeping. `plan review` binds to the
+current snapshot without requiring a copied hash. `research finding` can atomically
+record one result, its observations, a proposed claim, and its supporting argument,
+while leaving semantic verification and admission explicit. Closure methods scale
+with consequence rather than imposing four identical sweeps on every lane.
+
+Source refresh revalidates unchanged source-backed artifacts by exact locator and
+content hash and retracts only changed or missing dependencies. The final technical
+specification no longer embeds raw state JSON; exact records remain in the machine
+handoff and evidence manifest.
+
+Ordinary experiments now default to portable local execution in a disposable copy.
+The macOS Seatbelt adapter remains an optional `restricted` mode and never falls back.
+Discovery does not make a cross-platform security sandbox part of its product
+completion standard.
+
+## 022 — Make critical challenges planned work and protect the final artifact
+
+Critical claims now provision their lane's primary falsification method when created.
+Older active runs receive the same obligation before closure begins. A generic search
+activity cannot satisfy it: each critical claim requires a falsification activity whose
+captured evidence is linked to an argument about that exact claim.
+
+`claim challenge` is the ordinary investigator-facing operation for this work. It
+atomically records the saved report, activity, observations, evidence, argument, and
+method completion, while leaving argument verification, claim evaluation, lane closure,
+and phase advancement explicit. This removes ID-oriented wiring without combining
+semantic judgments or weakening replay and audit guarantees.
+
+The specification renderer now owns exactly one top-level title. A leading authored H1
+is removed from the rendered body, while the authored narrative remains preserved as
+its immutable source artifact. This keeps the engineer-facing specification polished
+without altering machine traceability.
+
+Experiment policy uses “sandbox” in the practical product sense: work happens in a
+disposable project/state copy, including disposable local databases. This is not a
+claim of universal process confinement. Experiment subprocesses are not authorized to
+mutate live services or use production credentials. Explicitly read-only provider
+research remains outside the subprocess and may be captured as evidence; a hypothesis
+that requires a live mutation is blocked until a safe fixture exists.

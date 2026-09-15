@@ -222,6 +222,34 @@ def test_draft_staleness_and_revised_checklist(designed):
     assert call("phase", "check")["result"]["can_advance"]
 
 
+def test_one_adversarial_report_can_cover_multiple_checks(designed):
+    env = designed
+    call = env["call"]
+    draft(env)
+    call("phase", "advance")
+    checks = call("challenge", "initialize")["result"]["checks"]
+    reviewed = call(
+        "challenge",
+        "review",
+        "--check",
+        checks[0]["ref"],
+        "--check",
+        checks[1]["ref"],
+        "--disposition",
+        "completed_no_finding",
+        "--reason",
+        "One substantive report attacks both related boundaries",
+        "--report",
+        str(env["narrative"]),
+    )["result"]
+    assert len(reviewed["checks"]) == 2
+    rows = {row["ref"]: row for row in call("challenge", "list")["result"]}
+    assert rows[checks[0]["ref"]]["report_artifact_id"]
+    assert (
+        rows[checks[0]["ref"]]["report_artifact_id"] == rows[checks[1]["ref"]]["report_artifact_id"]
+    )
+
+
 def test_defeater_requires_regression_and_distinct_resolution(designed):
     env = designed
     call = env["call"]
@@ -344,13 +372,27 @@ def test_experiment_isolation_replay_and_proof(designed):
             'print("proof passed")',
         ]
     )
-    result = call("experiment", "exec", experiment["ref"], "--command", command, request=request)[
-        "result"
-    ]
+    result = call(
+        "experiment",
+        "exec",
+        experiment["ref"],
+        "--execution-mode",
+        "restricted",
+        "--command",
+        command,
+        request=request,
+    )["result"]
     assert result["exit_code"] == 0 and (env["source"] / "app.txt").read_text() == "baseline"
-    assert call("experiment", "exec", experiment["ref"], "--command", command, request=request)[
-        "replayed"
-    ]
+    assert call(
+        "experiment",
+        "exec",
+        experiment["ref"],
+        "--execution-mode",
+        "restricted",
+        "--command",
+        command,
+        request=request,
+    )["replayed"]
     call(
         "experiment",
         "finish",
@@ -400,7 +442,13 @@ def test_experiment_cannot_write_original_or_use_network(designed):
         f'from pathlib import Path; Path({str(env["source"] / "app.txt")!r}).write_text("corrupt")'
     )
     result = call(
-        "experiment", "exec", exp["ref"], "--command", json.dumps(["/usr/bin/python3", "-c", code])
+        "experiment",
+        "exec",
+        exp["ref"],
+        "--execution-mode",
+        "restricted",
+        "--command",
+        json.dumps(["/usr/bin/python3", "-c", code]),
     )["result"]
     assert result["exit_code"] != 0 and (env["source"] / "app.txt").read_text() == "baseline"
     call(
@@ -420,6 +468,8 @@ def test_experiment_cannot_write_original_or_use_network(designed):
         "experiment",
         "exec",
         exp["ref"],
+        "--execution-mode",
+        "restricted",
         "--command",
         json.dumps(
             ["/usr/bin/python3", "-c", 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0))']

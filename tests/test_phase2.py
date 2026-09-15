@@ -59,7 +59,7 @@ def evidence(env, kind="primary", source=False, document="evidence/vendor-webhoo
     )["result"]
 
 
-def claim(env, impact="material"):
+def claim(env, impact="material", verification="authoritative_record"):
     return env["call"](
         "claim",
         "create",
@@ -69,6 +69,10 @@ def claim(env, impact="material"):
         "vendor_capability",
         "--impact",
         impact,
+        "--verification-method",
+        verification,
+        "--verification-rationale",
+        "The selected method directly addresses the scoped assertion",
         "--text",
         "Delivery is at-least-once without ordering guarantees",
     )["result"]
@@ -375,15 +379,43 @@ def test_secondary_evidence_cannot_admit_material_claim(investigation):
     assert "PRIMARY_EVIDENCE_REQUIRED" in {f["code"] for f in result["violations"]}
 
 
-def test_critical_requires_empirical_and_falsification(investigation):
+def test_critical_experiment_claim_requires_empirical_and_falsification(investigation):
     env = investigation
-    e, c = evidence(env), claim(env, "critical")
+    e, c = evidence(env), claim(env, "critical", verification="experiment")
     argument(env, c, e)
     closure(env)
     codes = {f["code"] for f in env["call"]("claim", "check", c["ref"])["result"]["violations"]}
     assert {"EMPIRICAL_EVIDENCE_REQUIRED", "VERIFICATION_METHOD_REQUIRED"} <= codes
-    for method in ("falsification", "empirical_verification"):
-        env["call"]("method", "create", "--lane", env["lane"]["ref"], "--name", method)
+    env["call"](
+        "claim",
+        "challenge",
+        c["ref"],
+        "--surface",
+        env["surface"]["ref"],
+        "--query",
+        "Try to find a counterexample to the claimed behavior",
+        "--summary",
+        "The scoped falsification attempt found no counterexample",
+        "--origin-uri",
+        (FIXTURE / "evidence/reproduction.md").as_uri(),
+        "--report",
+        str(FIXTURE / "evidence/reproduction.md"),
+        "--evidence-kind",
+        "empirical",
+        "--locator",
+        "synthetic reproduction",
+        "--observation",
+        "The attempted counterexample did not reproduce",
+        "--role",
+        "supports",
+        "--reasoning",
+        "The focused attempt did not falsify the scoped claim",
+        "--limitations",
+        "Synthetic fixture only",
+    )
+    env["call"](
+        "method", "create", "--lane", env["lane"]["ref"], "--name", "empirical_verification"
+    )
     empirical = evidence(env, "empirical")
     argument(env, c, empirical)
     closure(env)
@@ -407,6 +439,49 @@ def test_source_refresh_retracts_source_evidence_only(investigation):
     assert rows[external["uuid"]]["evidence_status"] == "active"
     assert env["call"]("resume")["result"]["lanes"][0]["lane_status"] == "active"
     assert env["call"]("audit", "verify")["result"]["valid"]
+
+
+def test_source_refresh_revalidates_unchanged_source_evidence(investigation):
+    env = investigation
+    call = env["call"]
+    (env["source"] / "other.txt").write_text("other baseline")
+    call("source", "refresh", "--reason", "Include the second source file")
+
+    def source_evidence(path, observation):
+        artifact = call(
+            "artifact",
+            "capture",
+            "--file",
+            str(path),
+            "--origin-uri",
+            path.as_uri(),
+            "--source-backed",
+        )["result"]
+        return call(
+            "evidence",
+            "create",
+            "--lane",
+            env["lane"]["ref"],
+            "--artifact",
+            artifact["ref"],
+            "--kind",
+            "primary",
+            "--locator",
+            path.name,
+            "--observation",
+            observation,
+        )["result"]
+
+    unchanged = source_evidence(env["source"] / "app.txt", "App behavior remains baseline")
+    changed = source_evidence(env["source"] / "other.txt", "Other behavior is baseline")
+    (env["source"] / "other.txt").write_text("other changed")
+    refreshed = call("source", "refresh", "--reason", "Only the second file changed")["result"]
+    assert refreshed["revalidated_evidence"] == [unchanged["uuid"]]
+    assert refreshed["retracted_evidence"] == [changed["uuid"]]
+    rows = {e["uuid"]: e for e in call("evidence", "list")["result"]}
+    assert rows[unchanged["uuid"]]["evidence_status"] == "active"
+    assert rows[changed["uuid"]]["evidence_status"] == "retracted"
+    assert call("audit", "verify")["result"]["valid"]
 
 
 def test_lead_disposition_requires_links(investigation):

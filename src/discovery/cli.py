@@ -41,7 +41,7 @@ def parser() -> Parser:
     p.add_argument(
         "--version",
         action="version",
-        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 6}}),
+        version=canonical({"ok": True, "result": {"version": __version__, "schema_version": 7}}),
     )
     p.add_argument("--json", action="store_true")
     p.add_argument(
@@ -71,7 +71,16 @@ def parser() -> Parser:
         **FAMILIES,
         "report": ["export"],
         "run": ["init", "upgrade"],
-        "question": ["create", "list", "resolve"],
+        "question": [
+            "create",
+            "list",
+            "resolve",
+            "assume",
+            "withdraw",
+            "reclassify",
+            "respondent-add",
+        ],
+        "assumption": ["create", "list", "discharge", "invalidate", "link-claim", "link-decision"],
         "research-need": ["create", "list", "answer"],
         "lane": [
             "create",
@@ -87,11 +96,19 @@ def parser() -> Parser:
         "method": ["create", "list", "disposition"],
         "artifact": ["capture", "list"],
         "evidence": ["create", "list", "retract"],
-        "claim": ["create", "list", "check", "evaluate", "reject"],
+        "claim": [
+            "create",
+            "list",
+            "check",
+            "evaluate",
+            "reject",
+            "verification",
+            "challenge",
+        ],
         "argument": ["create", "list", "verify", "resolve-counter"],
         "source": ["refresh", "list"],
-        "surface": ["list", "disposition"],
-        "research": ["record", "list"],
+        "surface": ["create", "list", "disposition"],
+        "research": ["record", "capture", "finding", "list"],
         "plan": ["snapshot", "review"],
         "phase": ["check", "advance", "regress"],
         "audit": ["verify"],
@@ -136,6 +153,46 @@ def parser() -> Parser:
                     metavar="0..1",
                     help="Numeric confidence in the proposed respondent's authority, e.g. 0.8.",
                 )
+            if name in (
+                "question.assume",
+                "question.withdraw",
+                "question.reclassify",
+                "question.respondent-add",
+            ):
+                cmd.add_argument("ref", type=text)
+            if name == "question.assume":
+                for key in ("text", "justification", "scope", "invalidates-when"):
+                    cmd.add_argument("--" + key, required=True, type=text)
+                cmd.add_argument(
+                    "--impact", required=True, choices=["contextual", "material", "critical"]
+                )
+            if name == "question.withdraw":
+                cmd.add_argument("--reason", required=True, type=text)
+            if name == "question.reclassify":
+                cmd.add_argument("--blocking", action="store_true")
+                cmd.add_argument("--non-blocking", action="store_true")
+                cmd.add_argument("--reason", required=True, type=text)
+            if name == "question.respondent-add":
+                cmd.add_argument("--rank", required=True, type=int)
+                cmd.add_argument("--kind", required=True, choices=["person", "group", "role"])
+                cmd.add_argument("--name", required=True, type=text)
+                cmd.add_argument("--confidence", required=True, type=confidence)
+                cmd.add_argument("--rationale", required=True, type=text)
+                cmd.add_argument("--artifact", type=text)
+                cmd.add_argument("--identity-unknown", action="store_true")
+            if name == "assumption.create":
+                for key in ("text", "justification", "scope", "invalidates-when"):
+                    cmd.add_argument("--" + key, required=True, type=text)
+                cmd.add_argument(
+                    "--impact", required=True, choices=["contextual", "material", "critical"]
+                )
+            if name in ("assumption.discharge", "assumption.invalidate"):
+                cmd.add_argument("ref", type=text)
+                cmd.add_argument("--reason", required=True, type=text)
+            if name in ("assumption.link-claim", "assumption.link-decision"):
+                cmd.add_argument("ref", type=text)
+                cmd.add_argument("--target", required=True, type=text)
+                cmd.add_argument("--reason", required=True, type=text)
             if name in ("need.create", "lane.create"):
                 cmd.add_argument(
                     "--impact", required=True, choices=["contextual", "material", "critical"]
@@ -162,10 +219,15 @@ def parser() -> Parser:
                         "not comma-separated names."
                     ),
                 )
+            if name == "surface.create":
+                cmd.add_argument("--name", required=True, type=text)
+                cmd.add_argument("--reason", required=True, type=text)
             if name in (
                 "question.resolve",
                 "surface.disposition",
                 "research.record",
+                "research.capture",
+                "research.finding",
                 "lane.depends-on",
             ):
                 cmd.add_argument(
@@ -174,12 +236,21 @@ def parser() -> Parser:
                     help=(
                         "Surface reference (S-001), not a lane. In Phase 1 choose a current "
                         "surface with research_lane_id null from surface list."
-                        if name in ("research.record", "surface.disposition")
+                        if name
+                        in (
+                            "research.record",
+                            "research.capture",
+                            "research.finding",
+                            "surface.disposition",
+                        )
                         else None
                     ),
                 )
             if name == "question.resolve":
                 cmd.add_argument("--answer", required=True, type=text)
+                relation = cmd.add_mutually_exclusive_group()
+                relation.add_argument("--confirms-assumption", action="store_true")
+                relation.add_argument("--contradicts-assumption", action="store_true")
             if name == "lane.depends-on":
                 cmd.add_argument("--depends-on", required=True, type=text)
                 cmd.add_argument("--reason", required=True, type=text)
@@ -190,7 +261,7 @@ def parser() -> Parser:
                     choices=["searched", "unavailable", "inaccessible", "not_applicable"],
                 )
                 cmd.add_argument("--reason", required=True, type=text)
-            if name == "research.record":
+            if name in ("research.record", "research.capture", "research.finding"):
                 cmd.add_argument("--method", type=text)
                 cmd.add_argument(
                     "--complete-surface",
@@ -207,10 +278,63 @@ def parser() -> Parser:
                 cmd.add_argument("--query", required=True, type=text)
                 cmd.add_argument("--summary", required=True, type=text)
                 cmd.add_argument("--origin-uri", required=True, type=text)
-            if name in ("research.record", "plan.review"):
+            if name in ("research.capture", "research.finding"):
+                cmd.add_argument(
+                    "--evidence-kind",
+                    required=True,
+                    choices=["primary", "secondary", "empirical"],
+                )
+                cmd.add_argument("--locator", required=True, type=text)
+                cmd.add_argument("--observation", required=True, action="append", type=text)
+            if name == "research.finding":
+                cmd.add_argument("--claim", required=True, type=text)
+                cmd.add_argument(
+                    "--claim-kind",
+                    required=True,
+                    choices=[
+                        "current_behavior",
+                        "vendor_capability",
+                        "constraint",
+                        "intended_behavior",
+                    ],
+                )
+                cmd.add_argument(
+                    "--impact", required=True, choices=["contextual", "material", "critical"]
+                )
+                cmd.add_argument(
+                    "--verification-method",
+                    required=True,
+                    choices=[
+                        "inspection",
+                        "analysis",
+                        "authoritative_record",
+                        "test",
+                        "experiment",
+                    ],
+                )
+                cmd.add_argument(
+                    "--verification-availability",
+                    default="available",
+                    choices=["available", "unavailable", "inaccessible"],
+                )
+                cmd.add_argument("--verification-rationale", required=True, type=text)
+                cmd.add_argument("--verification-limitations", default="", type=str)
+                cmd.add_argument("--reasoning", required=True, type=text)
+                cmd.add_argument("--argument-limitations", required=True, type=text)
+                cmd.add_argument("--assumption", action="append", default=[], type=text)
+            if name in (
+                "research.record",
+                "research.capture",
+                "research.finding",
+                "plan.review",
+            ):
                 cmd.add_argument("--report", required=True)
             if name == "plan.review":
-                cmd.add_argument("--plan-hash", required=True, type=text)
+                cmd.add_argument(
+                    "--plan-hash",
+                    type=text,
+                    help="Optional freshness assertion; defaults to the current plan snapshot.",
+                )
                 cmd.add_argument(
                     "--outcome", required=True, choices=["passed", "findings", "inconclusive"]
                 )
@@ -236,6 +360,7 @@ def phase2_arguments(cmd: Parser, name: str) -> None:
         "claim.check",
         "claim.evaluate",
         "claim.reject",
+        "claim.challenge",
         "evidence.retract",
         "argument.verify",
         "argument.resolve-counter",
@@ -306,6 +431,51 @@ def phase2_arguments(cmd: Parser, name: str) -> None:
             required=True,
             choices=["current_behavior", "vendor_capability", "constraint", "intended_behavior"],
         )
+        cmd.add_argument(
+            "--verification-method",
+            required=True,
+            choices=["inspection", "analysis", "authoritative_record", "test", "experiment"],
+        )
+        cmd.add_argument(
+            "--verification-availability",
+            default="available",
+            choices=["available", "unavailable", "inaccessible"],
+        )
+        cmd.add_argument("--verification-rationale", required=True, type=text)
+        cmd.add_argument("--verification-limitations", default="", type=str)
+    if name == "claim.verification":
+        cmd.add_argument("ref", type=text)
+        cmd.add_argument(
+            "--method",
+            required=True,
+            choices=["inspection", "analysis", "authoritative_record", "test", "experiment"],
+        )
+        cmd.add_argument(
+            "--availability",
+            required=True,
+            choices=["available", "unavailable", "inaccessible"],
+        )
+        cmd.add_argument("--rationale", required=True, type=text)
+        cmd.add_argument("--limitations", default="", type=str)
+    if name == "claim.challenge":
+        cmd.description = (
+            "Record one substantive falsification attempt for a critical claim. "
+            "This atomically captures the report, observations, evidence, argument, and "
+            "falsification-method completion; verification and admission remain explicit."
+        )
+        cmd.add_argument("--surface", required=True, type=text)
+        cmd.add_argument("--query", required=True, type=text)
+        cmd.add_argument("--summary", required=True, type=text)
+        cmd.add_argument("--origin-uri", required=True, type=text)
+        cmd.add_argument("--report", required=True, type=text)
+        cmd.add_argument(
+            "--evidence-kind", required=True, choices=["primary", "secondary", "empirical"]
+        )
+        cmd.add_argument("--locator", required=True, type=text)
+        cmd.add_argument("--observation", required=True, action="append", type=text)
+        cmd.add_argument("--role", required=True, choices=["supports", "refutes", "qualifies"])
+        cmd.add_argument("--reasoning", required=True, type=text)
+        cmd.add_argument("--limitations", required=True, type=text)
     if name == "argument.create":
         cmd.add_argument("--claim", required=True, type=text)
         cmd.add_argument("--role", required=True, choices=["supports", "refutes", "qualifies"])
@@ -384,8 +554,20 @@ def main(argv: list[str] | None = None) -> int:
                     ns.pop(option, None)
             if ns.get("complete_method") and not ns.get("method"):
                 raise DiscoveryError("INVALID_ARGUMENT", "--complete-method requires --method.")
-            for key in ("needs", "methods", "surfaces", "evidence", "claims"):
-                if key in ns:
+            if ns.get("blocking") and ns.get("non_blocking"):
+                raise DiscoveryError("INVALID_ARGUMENT", "Choose one question classification.")
+            if name == "question.reclassify" and not (ns.get("blocking") or ns.get("non_blocking")):
+                raise DiscoveryError("INVALID_ARGUMENT", "Choose --blocking or --non-blocking.")
+            for key in (
+                "needs",
+                "methods",
+                "surfaces",
+                "evidence",
+                "claims",
+                "assumptions",
+                "observation",
+            ):
+                if key in ns and isinstance(ns[key], list):
                     ns[key] = sorted(set(ns[key]))
             output = {"ok": True, **execute(root, name, ns, request, actor, session)}
         print(canonical(output) if machine else json.dumps(output, indent=2, ensure_ascii=False))

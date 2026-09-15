@@ -44,9 +44,13 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         prepared["artifact"] = capture(root, content)
     elif name in (
         "research.record",
+        "research.capture",
+        "research.finding",
+        "claim.challenge",
         "plan.review",
         "argument.verify",
         "challenge.complete",
+        "challenge.review",
         "defeater.defeat",
         "agent.complete",
         "agent.finding",
@@ -56,12 +60,13 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
         content = path.read_bytes()
         require(content.strip(), "INVALID_ARGUMENT", "Report must not be empty.")
         data["report_sha256"] = digest(content)
-        if name == "research.record":
+        if name in ("research.record", "research.capture", "research.finding", "claim.challenge"):
             prepared["content"] = content
         else:
             prepared["artifact"] = capture(root, content)
         if name == "plan.review":
             snapshot = query(root, "plan.snapshot")
+            data["plan_hash"] = data.get("plan_hash") or snapshot["plan_sha256"]
             prepared["context"] = capture(root, canonical(snapshot["context"]).encode())
     elif name == "assessment.record":
         try:
@@ -102,12 +107,12 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
             return initialize(con, aid, data, prepared["artifact"], prepared["source"])
         if name == "run.upgrade":
             require(
-                con.execute("PRAGMA user_version").fetchone()[0] in (3, 4, 5),
+                con.execute("PRAGMA user_version").fetchone()[0] in (3, 4, 5, 6),
                 "INVALID_STATE",
-                "Run already uses schema 6.",
+                "Run already uses schema 7.",
             )
             upgrade_schema(con)
-            return {"schema_version": 6}
+            return {"schema_version": 7}
         if name == "assessment.record":
             return assessments.record(con, aid, data["assessment"], root)
         if name.startswith(("agent.", "group.", "finding.")):
@@ -129,7 +134,17 @@ def execute(root: Path, name: str, data: dict, request: str, actor: dict, sessio
             name
             in ("lane.activate", "lane.reopen", "lane.closure-begin", "lane.close", "need.answer")
             or name.startswith(("lead.", "method."))
-            or (phase == 2 and name in ("surface.disposition", "research.record"))
+            or name in ("research.capture", "research.finding")
+            or (
+                phase == 2
+                and name
+                in (
+                    "surface.disposition",
+                    "research.record",
+                    "research.capture",
+                    "research.finding",
+                )
+            )
         ):
             return investigation.write(con, aid, name, data, prepared, root)
         if name.startswith("phase."):

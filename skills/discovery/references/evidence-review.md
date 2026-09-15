@@ -11,7 +11,10 @@ For each material conclusion, identify the immutable receipt/script, relevant
 case, actual assertion, observed result, and scope limitation. A short table in
 the verification report is sufficient. Follow the code to confirm that the
 assertion checks the claimed state before a reset or another test changes it.
-Resolve non-system runtime executables to verified absolute file paths before preparing the command. The sandbox uses a minimal PATH; host-shell success does not prove the executable will be found there. Keep scratch paths under the sandbox cwd.
+Resolve non-system runtime executables before preparing the command. Disposable
+execution uses a minimal PATH, so host-shell success does not prove the executable
+will be found there. Keep scratch paths under the copied working directory and do not
+pass paths into the original source tree.
 
 Printed expected values, tautological assertions and expected-failure test suite
 exit codes are not proof of repaired behavior.

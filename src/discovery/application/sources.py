@@ -46,16 +46,61 @@ def write(
         )
         result = entity(con, "source", captured_by_actor_id=actor, **current)
         affected = con.execute(
-            "SELECT e.* FROM evidence e JOIN artifact a USING(artifact_id) WHERE "
+            "SELECT e.*,a.artifact_sha256,a.artifact_kind,a.media_type,a.byte_size,"
+            "a.storage_path,a.origin_uri,a.source_locator AS artifact_source_locator,"
+            "a.metadata_json FROM evidence e JOIN artifact a USING(artifact_id) WHERE "
             "a.source_repository_id=? AND e.evidence_status='active'",
             (source["source_repository_id"],),
         ).fetchall()
         claim_ids = set()
+        retracted = []
+        revalidated = []
+        replacement_artifacts = {}
         for e in affected:
+            locator = Path(e["artifact_source_locator"] or "")
+            source_path = Path(source["repository_root"]) / locator
+            unchanged = bool(
+                e["artifact_source_locator"]
+                and not locator.is_absolute()
+                and ".." not in locator.parts
+                and source_path.is_file()
+                and not source_path.is_symlink()
+                and digest(source_path.read_bytes()) == e["artifact_sha256"]
+            )
+            if unchanged:
+                replacement = replacement_artifacts.get(e["artifact_id"])
+                if replacement is None:
+                    replacement = entity(
+                        con,
+                        "artifact",
+                        artifact_kind=e["artifact_kind"],
+                        artifact_sha256=e["artifact_sha256"],
+                        media_type=e["media_type"],
+                        byte_size=e["byte_size"],
+                        storage_path=e["storage_path"],
+                        origin_uri=e["origin_uri"],
+                        source_repository_id=result["id"],
+                        source_revision=current["baseline_revision"],
+                        source_locator=e["artifact_source_locator"],
+                        captured_by_actor_id=actor,
+                        metadata_json=e["metadata_json"],
+                    )
+                    con.execute(
+                        "INSERT INTO artifact_lineage VALUES (?,?,?)",
+                        (replacement["id"], e["artifact_id"], "revalidated_unchanged_source"),
+                    )
+                    replacement_artifacts[e["artifact_id"]] = replacement
+                con.execute(
+                    "UPDATE evidence SET artifact_id=?,dt_modified=? WHERE evidence_id=?",
+                    (replacement["id"], now(), e["evidence_id"]),
+                )
+                revalidated.append(e["evidence_uuid"])
+                continue
             con.execute(
                 "UPDATE evidence SET evidence_status='retracted',dt_modified=? WHERE evidence_id=?",
                 (now(), e["evidence_id"]),
             )
+            retracted.append(e["evidence_uuid"])
             con.execute(
                 "UPDATE defeater SET defeater_status='open',dt_modified=? WHERE defeater_id IN "
                 "(SELECT defeater_id FROM defeater_evidence WHERE evidence_id=? "
@@ -80,7 +125,8 @@ def write(
             invalidate_claim(con, cid)
         return {
             **result,
-            "retracted_evidence": [e["evidence_uuid"] for e in affected],
+            "retracted_evidence": retracted,
+            "revalidated_evidence": revalidated,
             "invalidated_claim_ids": sorted(claim_ids),
         }
     require(

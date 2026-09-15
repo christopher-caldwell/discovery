@@ -2,9 +2,23 @@
 
 Phase 3 selects one strategy, records accepted decisions traced to admissible claims, and creates impact-preserving proof obligations. Use `strategy create/select/reject`, `decision create/accept/reject`, `obligation create/attach-evidence/attach-experiment/satisfy/fail/block/not-applicable`, and `requirement create`. Requirements link an answered need, a decision, acceptance criteria, and a verification plan. Do not disguise unresolved decisions or proofs as contextual to pass gates.
 
-`experiment plan` records a hypothesis and procedure. `experiment exec --command '["/usr/bin/python3","-c","print(123)"]'` copies the source baseline and executes in a macOS Seatbelt sandbox. Writes are limited to the copy and networking is denied. This is not a VM or protection against credential reads; the process can read filesystem content. Unsupported platforms fail closed. Do not execute untrusted arbitrary programs on the assumption that the copy alone isolates them. Additional output files stay in scratch and must be captured explicitly when needed as durable evidence.
+`experiment plan` records a hypothesis before execution. Ordinary `experiment exec`
+copies the source baseline, runs a reviewed argv command there with a scrubbed
+environment, captures its result, and compares the original source afterward. This is
+portable disposable execution, not a security boundary; it cannot prevent external
+effects. Do not use it for untrusted code or commands that may contact real services.
+When stronger local containment is specifically useful, `--execution-mode restricted`
+requests macOS Seatbelt, limits writes to the copy, denies networking, and never falls
+back. The compatibility spelling `trusted-local` maps to ordinary `local` mode.
 
-Inspect captured exit code, `output_limited`, stdout/stderr, hashes, and limitations, then record `experiment finish --outcome ... --conclusion ... --limitations ...`. A zero exit does not prove the hypothesis. Before accepting empirical proof, read [evidence-review.md](evidence-review.md) and map each material conclusion to its actual assertion, receipt observation, and limitation. Execution has separately audited reservation and receipt-registration transactions. Retry the same request to recover a recorded receipt, never to rerun. Output capture stops the process group when either stream exceeds 2,000,000 bytes; an output-limited result cannot pass. On `EXPERIMENT_INTERRUPTED`, inspect the existing scratch attempt and stop any surviving child process (a killed controller cannot clean it up), then abort it explicitly and create a replacement. Do not hide failed attempts or delete their records.
+The disposable copy may contain local databases and synthetic or sanitized fixtures.
+It must not contain production credentials or be used for any live mutation. When
+current external information is necessary, call a deliberately read-only provider as
+research outside the experiment subprocess and capture the result as evidence. If the
+only meaningful test requires changing live data, mark the experiment blocked and
+state what safe fixture or environment is missing.
+
+Inspect execution mode, enforced restrictions, safety limitations, original-source comparison, exit code, `output_limited`, stdout/stderr, and hashes before `experiment finish`. A zero exit does not prove the hypothesis. Before accepting empirical proof, read [evidence-review.md](evidence-review.md) and map each material conclusion to its actual assertion, receipt observation, and limitation. Execution has separately audited reservation and receipt-registration transactions. Retry the same request to recover a recorded receipt, never to rerun. Output capture stops the process group when either stream exceeds 2,000,000 bytes; an output-limited result cannot pass. On `EXPERIMENT_INTERRUPTED`, inspect the existing scratch attempt and stop any surviving child process, then abort explicitly and create a replacement. Do not hide failed attempts or delete records.
 
 Write substantive technical narrative and use `spec draft --narrative FILE`. Structured changes stale the draft. Phase 3 advances only after traceability and proof gates pass.
 

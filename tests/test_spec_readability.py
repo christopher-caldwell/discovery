@@ -39,7 +39,7 @@ def test_spec_summarizes_receipts_without_losing_payload_or_stale_detection(
     assert artifact["ref"] in text
     assert receipt["artifact_sha256"] in text and receipt["storage_path"] in text
     assert (env["root"] / receipt["storage_path"]).is_file()
-    assert "relative to the original run directory" in text
+    assert "relative to the original Discovery run directory" in text
     assert result["structure_sha256"] == structure_hash(snapshot)
     changed = copy.deepcopy(snapshot)
     changed["experiment"][0]["command_json"] = '["different-command"]'
@@ -87,8 +87,23 @@ def test_spec_labels_rejected_requirements_and_missing_receipt(designed, tmp_pat
     assert "Historical acceptance rule" not in current
     assert "Historical acceptance rule" in history and rejected["ref"] in history
     assert "not current acceptance work" in history and "; rejected)" in history
-    assert '"execution_receipt": null' in text and '"experiment_status": "planned"' in text
+    assert "no execution receipt" in text and "planned" in text
+    assert "```json" not in text
     handoff = json.loads(files["handoff.json"])
     assert any(
         r["requirement_text"] == "Historical acceptance rule" for r in handoff["requirements"]
     )
+
+
+def test_renderer_owns_exactly_one_spec_title(designed, tmp_path):
+    snapshot = designed["call"]("spec", "snapshot")["result"]
+    result = prepare(
+        tmp_path / "rendered",
+        snapshot,
+        b"# Authored duplicate title\n\n## Executive conclusion\n\nBuild the scoped change.",
+    )
+    artifact = result["files"]["technical-spec.md"]
+    text = (tmp_path / "rendered" / artifact["storage_path"]).read_text()
+    assert text.startswith("# Ordering discovery\n\n## Executive conclusion")
+    assert "Authored duplicate title" not in text
+    assert sum(line.startswith("# ") for line in text.splitlines()) == 1

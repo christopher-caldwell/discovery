@@ -23,6 +23,7 @@ def test_compact_resume_preserves_state_and_full_execution_retrieval(designed, m
             k: v for k, v in original.items() if k not in ("command_json", "environment_json")
         }
     assert compact["experiments"][0]["execution_artifact_id"] == artifact["id"]
+    assert compact["investigator_actions"]
     assert (
         call("experiment", "list")["result"][0]["command_json"]
         == full["experiments"][0]["command_json"]

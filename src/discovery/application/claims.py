@@ -1,10 +1,11 @@
 import sqlite3
 from pathlib import Path
 
+from discovery.adapters.filesystem.artifacts import capture
 from discovery.adapters.sqlite.queries import state
 from discovery.adapters.sqlite.records import entity, resolve
-from discovery.application.investigation import active_lane, reopen
-from discovery.domain.encoding import now
+from discovery.application.investigation import active_lane, ensure_falsification_method, reopen
+from discovery.domain.encoding import digest, now
 from discovery.domain.errors import require
 from discovery.domain.investigation import claim_violations
 
@@ -24,9 +25,11 @@ def write(
 ) -> dict:
     run = con.execute("SELECT * FROM discovery_run").fetchone()
     require(
-        run["current_phase_no"] == 2 or name in ("evidence.create", "evidence.retract"),
+        run["current_phase_no"] == 2
+        or name in ("evidence.create", "evidence.retract", "claim.verification"),
         "WRONG_PHASE",
-        "Claim/evidence work requires Phase 2.",
+        "Claim/evidence work requires Phase 2; verification metadata may be repaired later "
+        "and will stale dependent work.",
     )
     if name == "evidence.create":
         lane = active_lane(con, data["lane"])
@@ -112,11 +115,139 @@ def write(
             claim_kind=data["kind"],
             claim_statement=data["text"],
             impact=data["impact"],
+            verification_method=data["verification_method"],
+            verification_availability=data["verification_availability"],
+            verification_rationale=data["verification_rationale"],
+            verification_limitations=data["verification_limitations"],
             is_canonical=1,
             created_by_actor_id=actor,
         )
+        falsification = (
+            ensure_falsification_method(con, lane["research_lane_id"])
+            if data["impact"] == "critical"
+            else None
+        )
         reopen(con, lane["research_lane_id"])
-        return claim
+        return {**claim, "falsification_method": falsification}
+    if name == "claim.challenge":
+        claim = resolve(con, "claim", data["ref"])
+        require(
+            claim["claim_status"] not in ("rejected", "superseded"),
+            "INVALID_STATE",
+            "Claim is terminal.",
+        )
+        require(
+            claim["impact"] == "critical",
+            "INVALID_ARGUMENT",
+            "The bundled falsification operation is for critical claims.",
+        )
+        lane = active_lane(con, f"L-{claim['research_lane_id']:03d}")
+        surface = resolve(con, "surface", data["surface"])
+        require(
+            surface["research_lane_id"] == lane["research_lane_id"],
+            "SCOPE_MISMATCH",
+            "Challenge surface and claim must belong to the same lane.",
+        )
+        method_ref = ensure_falsification_method(con, lane["research_lane_id"])
+        method = resolve(con, "method", method_ref["ref"])
+        request_hash = con.execute(
+            "SELECT artifact_sha256 FROM artifact WHERE artifact_id=?",
+            (run["input_artifact_id"],),
+        ).fetchone()[0]
+        require(
+            digest(prepared["content"]) != request_hash,
+            "ASSERTION_NOT_EVIDENCE",
+            "Recapturing the request does not turn its assertions into evidence.",
+        )
+        artifact = entity(
+            con,
+            "artifact",
+            artifact_kind="research_result",
+            media_type="text/plain",
+            captured_by_actor_id=actor,
+            origin_uri=data["origin_uri"],
+            **capture(root, prepared["content"]),
+        )
+        activity = entity(
+            con,
+            "activity",
+            research_lane_id=lane["research_lane_id"],
+            research_surface_id=surface["research_surface_id"],
+            research_method_id=method["research_method_id"],
+            actor_id=actor,
+            activity_kind="falsification",
+            query_or_action=data["query"],
+            result_summary=data["summary"],
+            result_artifact_id=artifact["id"],
+        )
+        evidence = [
+            entity(
+                con,
+                "evidence",
+                research_lane_id=lane["research_lane_id"],
+                artifact_id=artifact["id"],
+                evidence_kind=data["evidence_kind"],
+                source_locator=data["locator"],
+                observation=observation,
+                extracted_by_actor_id=actor,
+            )
+            for observation in data["observation"]
+        ]
+        argument = entity(
+            con,
+            "argument",
+            claim_id=claim["claim_id"],
+            argument_role=data["role"],
+            reasoning=data["reasoning"],
+            limitations=data["limitations"],
+            created_by_actor_id=actor,
+        )
+        for item in evidence:
+            con.execute("INSERT INTO argument_evidence VALUES (?,?)", (argument["id"], item["id"]))
+        reopen(con, lane["research_lane_id"])
+        con.execute(
+            "UPDATE research_method SET disposition='completed',disposition_reason=?,"
+            "dt_modified=? WHERE research_method_id=?",
+            (data["summary"], now(), method["research_method_id"]),
+        )
+        if data["role"] in ("refutes", "qualifies"):
+            con.execute(
+                "UPDATE claim SET claim_status='contested',dt_modified=? WHERE claim_id=?",
+                (now(), claim["claim_id"]),
+            )
+        return {
+            "claim": {"uuid": claim["claim_uuid"], "ref": data["ref"]},
+            "activity": activity,
+            "artifact": artifact,
+            "evidence": evidence,
+            "argument": argument,
+            "falsification_method": {**method_ref, "status": "completed"},
+            "semantic_status": (
+                "recorded; argument verification and claim evaluation remain explicit"
+            ),
+        }
+    if name == "claim.verification":
+        claim = resolve(con, "claim", data["ref"])
+        require(
+            claim["claim_status"] not in ("rejected", "superseded"),
+            "INVALID_STATE",
+            "Claim is terminal; create a revised claim.",
+        )
+        con.execute(
+            "UPDATE claim SET verification_method=?,verification_availability=?,"
+            "verification_rationale=?,verification_limitations=?,claim_status='proposed',"
+            "dt_modified=? WHERE claim_id=?",
+            (
+                data["method"],
+                data["availability"],
+                data["rationale"],
+                data["limitations"],
+                now(),
+                claim["claim_id"],
+            ),
+        )
+        reopen(con, claim["research_lane_id"])
+        return {"uuid": claim["claim_uuid"], "status": "proposed"}
     if name in ("claim.evaluate", "claim.reject"):
         claim = resolve(con, "claim", data["ref"])
         require(
