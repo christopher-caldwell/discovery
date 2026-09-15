@@ -1,0 +1,45 @@
+---
+description: Install the Discovery Agent Skill or load its shared investigation workflow.
+alwaysApply: true
+---
+
+# Discovery entry point for Cursor
+
+## Install or update the skill
+
+Treat “install this skill”, “install Discovery”, or “update Discovery” as a request
+to install it for Cursor. Follow the
+[shared installation procedure](../../docs/guides/agent-installation.md) yourself, using the current checkout
+as the source. It covers uv, the CLI, bundling the skill, and verification. An
+installation request does not start a Discovery investigation.
+
+Install the shared `skills/discovery/` folder at
+`~/.cursor/skills/discovery/` as a personal Agent Skill, available across projects.
+Honor an explicit project installation by using
+`<project>/.cursor/skills/discovery/` instead. Preserve the shared `SKILL.md`
+frontmatter. Do not convert the full workflow into an always-applied rule or add a
+second legacy slash-command file.
+
+Cursor also discovers compatible skill folders in `.agents`, `.claude`, and
+`.codex` locations. Inspect known Discovery copies before adding another; reuse a
+current shared copy if it is already discoverable, and report conflicting older
+copies without rewriting another application's installation. After verification,
+tell the user to find Discovery under Customize → Skills and invoke `/discovery`
+in a new chat. Do not claim it is visible unless you can inspect that UI. Direct
+local skill installation does not need a marketplace; create plugin/marketplace
+metadata only when the user explicitly requests that distribution method.
+
+## Run Discovery
+
+When the user asks to run or resume Discovery, read [AGENT_GUIDE.md](../../AGENT_GUIDE.md)
+and follow it through delivery. It contains the shared workflow, defaults, recovery,
+and stopping rules. Do not maintain a separate workflow in this entry file.
+
+If the guide is not present locally, run `discovery guide` to read the installed
+copy. In a Discovery checkout, use
+`uv run --project /absolute/path/to/discovery discovery guide` and keep that command
+prefix for subsequent operations. If neither is available, report the missing CLI
+or checkout rather than guessing an installation source.
+
+For ordinary work developing or documenting Discovery itself, perform the user's
+task normally. These instructions do not request a Discovery run for every edit.

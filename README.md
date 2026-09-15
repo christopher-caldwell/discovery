@@ -1,111 +1,104 @@
 # Discovery
 
-Discovery turns a questionable engineering request and its source repository into a
-technical specification that another engineer can build from.
+Give Discovery an engineering request and a project. Your agent investigates the
+request, checks it against the code and available evidence, and writes a technical
+specification someone can build from.
 
-The request can be vague, incomplete, contradictory, or simply wrong. A capable model
-investigates what the requester means, checks the real project, weighs evidence, tests
-ideas when useful, and challenges its recommendation. The CLI keeps that work durable
-and prevents important gaps from quietly disappearing.
+The request can be vague or wrong. Discovery keeps the questions, findings, and
+reasoning on disk so they survive a new chat or a switch to another agent. It stops
+before implementing the feature.
 
-Discovery stops before implementation. Its job is to determine what should be built
-and why.
+## Install from your agent chat
 
-## Run it
-
-Discovery requires Python 3.11 or newer, SQLite 3.37 or newer, Git on `PATH`, and a
-local filesystem. Development and local use run through uv.
-
-```sh
-uv sync
-uv run discovery --version
-```
-
-Discovery is designed for a model investigator. Once the included skill is installed,
-give the model the request and source repository:
+Open this checkout in Cursor, Claude Code, or Codex and say:
 
 ```text
-Run Discovery on /absolute/path/to/request.md against /absolute/path/to/project.
-Investigate the request and produce the final technical specification. Do not
-implement the target feature.
+Install this skill for me.
 ```
 
-The model handles record IDs, request UUIDs, evidence links, and phase gates. A returning
-session begins with the durable resume packet:
+The agent installs the CLI through uv and puts the shared skill in its own skill
+folder. After installation, use `$discovery` in Codex or `/discovery` in Claude Code
+and Cursor. The [installation guide](docs/guides/agent-installation.md) covers the steps
+the agent performs.
+
+## Use Discovery
+
+In your agent chat, invoke the skill and give it the work:
+
+```text
+Use Discovery to investigate this request against /absolute/path/to/project:
+
+[paste your request here]
+
+Produce the final technical specification. Do not implement the feature.
+```
+
+The repository includes an entry file for each agent. All three point to
+[AGENT_GUIDE.md](AGENT_GUIDE.md), which owns the workflow. You don't need to
+configure each agent or install a plugin.
+
+From another project, give your agent the path to this checkout's
+`AGENT_GUIDE.md`, or attach that file to the chat. It tells the agent how to use the
+CLI from the checkout. The agent needs local command and file access.
+
+The agent saves your request, creates the run, gathers evidence, and works through
+the review gates. One investigator is the default. It asks you when a missing
+product decision or unavailable access blocks the work, not for record IDs or
+routine setup choices.
+
+## CLI access
+
+Discovery needs Python 3.11 or newer, SQLite 3.37 or newer, Git, and a local
+filesystem. These commands use uv.
+
+For direct CLI use, the agent's installation makes `discovery` available. You can
+also install it manually:
 
 ```sh
-uv run discovery --json --run .discovery/runs/example resume --compact
+uv tool install /absolute/path/to/discovery
+discovery --version
 ```
 
-Read [Getting started](docs/guides/getting-started.md) for skill installation, direct CLI use,
-and the complete first run guide.
+The installed CLI includes the same guide and its detailed references. In any
+agent chat with access to that installation, you can say:
 
-## The workflow
+```text
+Read the output of `discovery guide`, then use Discovery to investigate
+[request] against [project path]. Produce the final technical specification.
+```
 
-Discovery has four phases:
+See [Getting started](docs/guides/getting-started.md) for installation and recovery.
 
-1. Intent and scope: understand the request, expose ambiguity, and plan focused work.
-2. Investigation and evidence: inspect the system, answer research questions, and test
-   important claims against evidence.
-3. Solution design and validation: compare approaches, choose a design, and prove the
-   parts that matter.
-4. Adversarial refinement: try to break the recommendation, then revise or regress when
-   the challenge succeeds.
+## What you get
 
-Forward movement is sequential. Discovery can return to an earlier phase without
-erasing what happened. A corrected run must traverse the affected gates again.
+A completed run exports:
 
-The final export contains:
+- `technical-spec.md`: the recommendation, scope, design, and acceptance criteria
+- `discovery-summary.md`: the result and remaining conditions
+- `handoff.json`: decisions, requirements, and their relationships
+- `evidence-manifest.json`: evidence and artifact provenance
 
-- `technical-spec.md`, the engineer facing specification
-- `discovery-summary.md`, a short result and conditions summary
-- `handoff.json`, exact decisions, requirements, and graph relationships
-- `evidence-manifest.json`, evidence and artifact provenance
+The Markdown specification is the product. The supporting records explain why it
+says what it says. If the investigation reaches a real blocker, you get an interim
+report with the findings and unresolved questions.
 
-The Markdown specification is the product. The JSON files support machines and audit.
+To continue in another chat or agent, give it the guide and the run path. It resumes
+from the saved state. Keep the run directory; its artifacts support the exported
+specification.
 
-## Concepts worth knowing
+## How it works
 
-The ticket is not truth. Discovery records it as a set of assertions and checks the
-claims that matter.
+Discovery moves through intent and scope, investigation, solution design, and
+adversarial review. A failed premise can send the work back to an earlier phase.
+The agent judges the evidence; the CLI checks required records, freshness, and
+legal transitions. Passing a gate does not make a conclusion infallible.
 
-The model judges meaning. Code validates state, required evidence, freshness, process,
-and legal phase movement. A passed gate means the required case exists; it does not
-mean the conclusion is infallible.
+Experiments use disposable project copies and local test data. Discovery does not
+launch models or keep a chat running after its host stops.
 
-Uncertainty stays visible. Important ambiguity blocks. A safer uncertainty can proceed
-under a scoped assumption that records what would invalidate it.
-
-Evidence keeps its job. Source code can establish current behavior. It cannot establish
-product intent. A product decision can establish intended behavior. It cannot prove the
-current implementation matches it.
-
-Research effort follows consequence. A contextual fact does not need the same challenge
-depth as a claim that controls a risky architecture decision. Critical claims receive
-an explicit attempt to disprove them.
-
-Experiments use disposable project state. Local databases and synthetic or sanitized
-fixtures are allowed. Production credentials and live mutations are not. Read only
-provider research happens outside the experiment process and enters the run as evidence.
-
-## Documentation
-
-Start with the [documentation index](docs/README.md). The main guides are:
-
-- [Getting started](docs/guides/getting-started.md)
-- [How a Discovery run works](docs/guides/workflow.md)
-- [Questions and assumptions](docs/guides/questions-and-assumptions.md)
-- [Evidence, claims, and burden of proof](docs/guides/evidence-and-claims.md)
-- [Experiments and disposable state](docs/guides/experiments.md)
-- [The final technical specification](docs/guides/final-specification.md)
-- [Resume, regression, and recovery](docs/guides/resume-and-recovery.md)
-- [Investigator modes](docs/guides/investigator-modes.md)
-- [CLI reference](docs/reference/cli.md)
-
-Maintainers should also read the
-[implementation contract](docs/reference/implementation-contract.md) and
-[decision log](docs/reference/decisions.md). Historical design and evaluation records
-live under `docs/history/`; they are not current operating instructions.
+Read the [workflow guide](docs/guides/workflow.md), the
+[specification guide](docs/guides/final-specification.md), or the
+[documentation index](docs/README.md) for more detail.
 
 ## Development
 
@@ -116,6 +109,7 @@ uv run ruff format --check .
 uv build
 ```
 
-New runs use schema 7. Active runs from schemas 3 through 6 can be upgraded explicitly.
-Finalized older runs remain readable. See the [CLI reference](docs/reference/cli.md)
-for mutation identity, replay behavior, machine output, and upgrades.
+The code separates CLI parsing, application operations, domain rules, and storage
+adapters. See the [implementation contract](docs/reference/implementation-contract.md)
+for those boundaries and the [agent integration guide](docs/reference/agent-integration.md)
+for the shared instructions and entry files.

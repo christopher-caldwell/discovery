@@ -1,20 +1,24 @@
 # Discovery documentation
 
-Discovery has two audiences. Investigators need to understand the request, gather
-evidence, and produce a useful specification. Maintainers need the exact storage,
-transaction, and gate contract. The first group should not have to learn the second
-group's machinery to do good work.
+Use Discovery from an agent chat. The human entry point is the
+[README](../README.md); the agent's operating contract is
+[AGENT_GUIDE.md](../AGENT_GUIDE.md). The CLI records the work and checks its gates.
 
 ## Start here
 
-Read these in order if you are new to Discovery:
+To install, open this checkout in your agent and say “Install this skill for me.”
+The [installation procedure](guides/agent-installation.md) is carried out by the agent.
 
-1. [Getting started](guides/getting-started.md) covers installation, initialization, and the
-   first useful commands.
-2. [How a Discovery run works](guides/workflow.md) explains the four phases and when work moves
-   forward or backward.
-3. [The final technical specification](guides/final-specification.md) describes the artifact
-   the entire process exists to produce.
+1. [Getting started](guides/getting-started.md) covers the chat workflow, one CLI
+   installation, and continuation in another agent.
+2. [Agent integration](reference/agent-integration.md) explains the generic core,
+   thin Cursor/Claude/Codex entry files, and optional skill packaging.
+3. [How a Discovery run works](guides/workflow.md) explains the four phases.
+4. [The final technical specification](guides/final-specification.md) describes
+   the artifact the investigation should deliver.
+
+The remaining command guides support agents, troubleshooting, and direct CLI use.
+Users do not need to perform those commands manually to start an investigation.
 
 ## Concept guides
 
@@ -38,8 +42,8 @@ Read these in order if you are new to Discovery:
   and Phase 4 command guide.
 - [Canonical defeaters](reference/canonical-defeaters.md) explains how one defect can cover several
   review categories without duplicate records.
-- [Codex installation](reference/codex-installation.md) covers the packaged skill and
-  plugin installation paths.
+- [Optional Codex skill installation](reference/codex-installation.md) covers the
+  existing skill/plugin distribution path; it is not required for ordinary use.
 
 ## Maintainer reference
 

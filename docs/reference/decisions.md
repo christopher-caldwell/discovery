@@ -324,3 +324,36 @@ claim of universal process confinement. Experiment subprocesses are not authoriz
 mutate live services or use production credentials. Explicitly read-only provider
 research remains outside the subprocess and may be captured as evidence; a hypothesis
 that requires a live mutation is blocked until a safe fixture exists.
+
+
+## Shared agent guide and native entry points
+
+**Decision:** Keep the complete operating contract in `AGENT_GUIDE.md`. Native
+Cursor, Claude Code, and Codex entry files and the optional skill route to that
+core. Bundle the core and detailed references in the Python wheel, exposed through
+`discovery guide` without a run. Default omitted investigator mode to `disabled`.
+
+**Reason:** The normal user interaction is a request in chat. Users should not install
+or tune a separate workflow for each agent, supply UUIDs, write request files, or
+answer a setup question about investigator modes. Agents still ask for genuinely
+missing authority or scope, preserve uncertainty, and use all existing evidence gates.
+
+**Boundary:** Entry files are local workspace routing. The installed guide or an
+explicit file reference works in other projects without global agent configuration.
+The CLI does not provide model execution, provider credentials, background scheduling,
+or semantic verification of an investigator's prose. Optional skills/plugins are
+loaders, not an independent copy of the operating rules.
+
+
+## Installation delegated to the host agent
+
+**Decision:** Native entry files recognize a request to install or update Discovery,
+choose the ecosystem's skill location, and direct the host agent through a shared
+uv installation and skill-copy procedure. Do not add a custom installer or require
+marketplace packaging for a local skill. Each installed skill records the resolved
+CLI path in local installation metadata; the loader retains it across commands.
+
+**Reason:** A user should be able to open the checkout and say “Install this skill.”
+The host already has the tools to install the Python CLI and copy a skill directory.
+Ecosystem-specific installation language belongs in its entry file; investigation
+behavior stays in the generic core. Installation verification must not start a run.

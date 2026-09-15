@@ -22,14 +22,33 @@ Inspect execution mode, enforced restrictions, safety limitations, original-sour
 
 Write substantive technical narrative and use `spec draft --narrative FILE`. Structured changes stale the draft. Phase 3 advances only after traceability and proof gates pass.
 
-For multiline probes, prepare a JSON argv file without shell quoting:
+For probes already present in the source baseline, write a JSON argv file such as
+`["/absolute/path/to/python3", "probe.py"]`, then use:
 
 ```sh
-python3 /path/to/discovery/skill/scripts/prepare_experiment.py --script /absolute/probe.py --output /absolute/command.json
 discovery ... experiment exec EXP-001 --command-file /absolute/command.json
 ```
 
-Resolve the helper relative to this skill. It embeds the exact script bytes, preserves the sandbox working directory, and refuses to overwrite a copied project file with the same basename. It only prepares argv; the CLI executes it. A source script already in the baseline can instead use a JSON argv file such as `["/usr/bin/python3", "probe.py"]`. Retain the command file unchanged for retries; edited bytes with the same request are a conflict. The interpreter must exist in the sandbox host environment.
+For a new multiline probe, write the script and command file under `.discovery/`
+(outside the captured artifact directory). A host Python process can prepare argv
+without nested shell quoting:
+
+```python
+import json
+from pathlib import Path
+
+script = Path("/absolute/source/.discovery/probe.py").read_text(encoding="utf-8")
+Path("/absolute/source/.discovery/command.json").write_text(
+    json.dumps(["/absolute/path/to/python3", "-c", script]), encoding="utf-8"
+)
+```
+
+The command runs in the disposable copy. Resolve the interpreter on the host first;
+it must exist there. Probes must use paths relative to the copied working directory,
+not the original source. Retain the command file unchanged for retries; edited bytes
+with the same request are a conflict. A full source/skill checkout also provides
+`scripts/prepare_experiment.py` for probes that require a script file and `__file__`;
+that helper is optional and is not needed for the installed CLI workflow.
 
 In Phase 4, use `challenge initialize` to create the configured checks against the exact draft. Try to break the design; submit actual reports with `challenge complete`. Read [evidence-review.md](evidence-review.md) for category-specific attacks, observations, and evidence limits; generic pass statements are insufficient. Findings need linked `defeater create` records targeting a claim or decision with evidence. When one defect affects several current review categories, create it once and use `defeater link-check DEF-001 --check CH-002 --reason "specific relevance"` for each additional check. Keep distinct defects separate. One canonical defect has one confirmation and resolution; category links are not independent confirmations. Links require the same exact draft and traversal. `defeater confirm` requires explicit regression before repair; `defeater defeat` needs distinct active resolution evidence and a report. Only contextual risks can be accepted. Revision with `spec revise` requires a fresh set of checks; prior defeaters are not erased.
 

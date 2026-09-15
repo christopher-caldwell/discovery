@@ -67,7 +67,8 @@ unbounded edge-case inventory. A limitation in the review does not narrow the
 request's contract; if correctness depends on an unstated restriction, record the
 restriction as a design gap or question instead of silently accepting it.
 
-For consequential proofs, an independent reviewer should inspect the exact
+When separate investigators are authorized and available, an independent reviewer
+should inspect consequential proofs using the exact
 script, assertions and final draft without being told to confirm the author's
 conclusion. Account for the reviewer's actual scope; independence does not turn
 its report into primary evidence or guarantee correctness.

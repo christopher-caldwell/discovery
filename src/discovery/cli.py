@@ -12,6 +12,7 @@ from discovery.completion_cli import FAMILIES, agent_arguments
 from discovery.completion_cli import arguments as completion_arguments
 from discovery.domain.encoding import canonical, digest, uid, uuid
 from discovery.domain.errors import DiscoveryError
+from discovery.guide import TOPICS, read_guide
 
 
 class Parser(argparse.ArgumentParser):
@@ -45,7 +46,7 @@ def parser() -> Parser:
     )
     p.add_argument("--json", action="store_true")
     p.add_argument(
-        "--run", required=True, type=Path, help="Run directory containing discovery.sqlite"
+        "--run", type=Path, help="Run directory containing discovery.sqlite (except guide/version)"
     )
     p.add_argument("--request-id", type=uuid)
     p.add_argument("--actor-id", type=uuid)
@@ -55,6 +56,11 @@ def parser() -> Parser:
     p.add_argument("--agent-run", type=text)
     p.add_argument("--lease", type=text)
     families = p.add_subparsers(dest="family", required=True)
+    guide = families.add_parser(
+        "guide", help="Read the shared agent instructions; no run or agent setup needed"
+    )
+    guide.set_defaults(command="guide")
+    guide.add_argument("--topic", choices=TOPICS, help="Read a detailed operating reference")
     for simple in ("status", "resume"):
         command = families.add_parser(simple)
         command.set_defaults(command=simple)
@@ -133,7 +139,10 @@ def parser() -> Parser:
                 cmd.add_argument("--input", required=True)
                 cmd.add_argument("--source", required=True)
                 cmd.add_argument(
-                    "--subagents", required=True, choices=["disabled", "partitioned", "overlap"]
+                    "--subagents",
+                    default="disabled",
+                    choices=["disabled", "partitioned", "overlap"],
+                    help="Investigator mode (default: disabled); additional workers are opt-in",
                 )
             if name in ("question.create", "need.create", "lane.create"):
                 cmd.add_argument("--text", required=True, type=text)
@@ -498,6 +507,15 @@ def main(argv: list[str] | None = None) -> int:
     try:
         ns = vars(parser().parse_args(args))
         name = ns.pop("command")
+        if name == "guide":
+            markdown = read_guide(ns["topic"])
+            if machine:
+                print(canonical({"ok": True, "result": {"markdown": markdown}}))
+            else:
+                print(markdown, end="" if markdown.endswith("\n") else "\n")
+            return 0
+        if ns["run"] is None:
+            raise DiscoveryError("INVALID_ARGUMENT", "This command requires --run.")
         root = ns.pop("run").resolve()
         for key in ("json", "family", "action"):
             ns.pop(key, None)

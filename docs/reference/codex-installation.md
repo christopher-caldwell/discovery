@@ -1,8 +1,19 @@
 # Installing Discovery for Codex
 
-Discovery has two parts: the Python CLI that owns workflow state and the Codex skill
-that teaches a model how to operate it. Install and verify both from the same checkout.
-The optional plugin is another way to distribute the skill. It does not install the CLI.
+For the ordinary personal skill, open this checkout in Codex and say “Install this
+skill for me.” [AGENTS.md](../../AGENTS.md) selects the native destination and follows
+the [shared installation procedure](../guides/agent-installation.md). After installing,
+invoke `$discovery` in a fresh task. The remaining sections cover manual CLI and
+optional plugin administration.
+
+This is an optional compatibility path for users who prefer installed Codex skills
+or a personal plugin. The normal [agent workflow](../guides/getting-started.md)
+requires only the CLI and its shared guide. No per-agent installation is required.
+
+The repository's [AGENTS.md](../../AGENTS.md) entry point already routes Discovery
+requests to [AGENT_GUIDE.md](../../AGENT_GUIDE.md). The optional skill is another
+loader for that same core via `discovery guide`; it owns no separate workflow.
+The plugin distributes the skill and does not install the CLI.
 
 ## Install the CLI
 
@@ -11,6 +22,7 @@ For development, use the repository environment:
 ```sh
 uv sync
 uv run discovery --version
+uv run discovery guide
 ```
 
 To make `discovery` available outside the checkout, install it as a uv tool:
@@ -18,6 +30,7 @@ To make `discovery` available outside the checkout, install it as a uv tool:
 ```sh
 uv tool install --force /absolute/path/to/discovery
 discovery --version
+discovery guide
 ```
 
 Use one installation method. If `discovery` already exists, run `command -v discovery`
@@ -27,31 +40,20 @@ The package release and database schema are separate versions. The current packa
 0.2.0 and creates schema 7 runs. Active schema 3 through 6 runs require an explicit
 `run upgrade`; finalized schema 5 and 6 runs remain readable.
 
-## Install the Codex skill directly
+## Direct skill installation
 
-The versioned skill lives in `skills/discovery/`. Copy it to the personal Codex skill
-directory:
+Use the procedure linked above. It installs the CLI and copies `skills/discovery/`
+to the selected personal skill directory, refreshing an existing direct copy when
+present. It preserves the previous files outside skill search paths and records the
+resolved CLI path in the installed `INSTALLATION.md`. Avoid creating a second copy
+in a legacy directory if Codex already discovers Discovery elsewhere.
 
-```sh
-mkdir -p "${CODEX_HOME:-$HOME/.codex}/skills/discovery"
-rsync -a --delete skills/discovery/ \
-  "${CODEX_HOME:-$HOME/.codex}/skills/discovery/"
-```
-
-Inspect an existing destination before using `--delete`. Keep project specific changes
-outside the installed copy so a refresh does not erase them.
-
-Validate the source and installed copies when the Codex skill validator is available:
+The source skill can be validated with the Codex skill validator when available:
 
 ```sh
 python3 "${CODEX_HOME:-$HOME/.codex}/skills/.system/skill-creator/scripts/quick_validate.py" \
   skills/discovery
-cmp skills/discovery/SKILL.md \
-  "${CODEX_HOME:-$HOME/.codex}/skills/discovery/SKILL.md"
 ```
-
-Start a new Codex task after refreshing the skill. Existing tasks may retain the skill
-snapshot they started with.
 
 ## Install the optional personal plugin
 

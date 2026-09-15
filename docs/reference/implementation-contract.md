@@ -5,6 +5,21 @@ This document and runtime schema 7 describe the implemented system. The
 [original design package](../history/original-design/) preserves historical context. All four
 phases can complete, including finalization.
 
+## Shared agent interface
+
+`AGENT_GUIDE.md` is the generic operating contract. `AGENTS.md`, `CLAUDE.md`, the
+Cursor `.mdc` rule, and the optional `SKILL.md` are thin entry points. Detailed
+references remain shared. Wheel builds include the core and references; `guide`
+reads them without a run, database, provider API, or network request. Plain output
+is Markdown; JSON output is the ordinary success envelope with `result.markdown`.
+
+Only state commands require `--run`; guide/version/help do not. `run init` normalizes
+an omitted `--subagents` to `disabled`, identical to an explicit disabled mode for
+replay identity. Existing stored modes and gate semantics are unchanged. Actor and
+request UUIDs remain required for mutations and are managed by the investigating
+agent. The agent owns chat-request capture and host tool selection; the CLI does not
+launch a model or claim cross-host synchronization.
+
 ## Architecture and transaction authority
 
 The CLI parses typed inputs and renders stable JSON. Application modules implement initialization, planning, investigation, claims, sources, and phase transitions. Pure domain policies evaluate phase, lane, and claim state; adapters provide SQLite transactions, immutable artifact capture, and source fingerprints. No ORM, model SDK, generic repository API, or asynchronous framework is required.

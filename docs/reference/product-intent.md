@@ -10,6 +10,20 @@ missing decisions, contradictions, weak research, and confident claims that the 
 does not support. The request is evidence of what somebody asked for. It is not proof
 that their description of the system is true.
 
+## Agent chat is the entry point
+
+The user supplies a request and the real project in an agent chat. The agent captures
+chat text, creates or recovers the run, performs the investigation, and delivers the
+specification. Routine CLI setup, record identifiers, and gate transitions belong to
+the agent. Missing product intent or authority still requires an honest question.
+
+One generic operating guide owns the workflow. Cursor, Claude Code, and Codex entry
+files only load that core. Installation is shared, not configured separately for
+each provider; `discovery guide` makes the same instructions available from the CLI.
+The host supplies command/file/research tools and any explicitly requested separate
+investigators. Single-investigator work is the default. Discovery neither calls a
+model API nor guarantees unattended execution after the host session stops.
+
 ## The division of responsibility
 
 A capable model performs the investigation. It interprets the request, reads the

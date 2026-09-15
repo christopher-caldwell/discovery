@@ -10,7 +10,7 @@ uv run discovery --run /absolute/path/to/run <family> <action> --help
 ## Global options
 
 `--run` points to the directory that owns `discovery.sqlite`, artifacts, scratch state,
-and exports. Every command except `--version` requires it.
+and exports. State commands require it; `guide`, `--version`, and help do not.
 
 `--json` returns a stable machine envelope. It can appear before or after the command.
 
@@ -33,6 +33,7 @@ after its action.
 
 | Family | Purpose |
 | --- | --- |
+| `guide` | Read the bundled agent guide or a detailed reference without a run |
 | `run init`, `run upgrade` | Create a run or upgrade an active older schema |
 | `status`, `resume` | Read current phase, state, drift, gates, and next actions |
 | `report export` | Export a useful interim report without finalizing |
@@ -63,6 +64,19 @@ after its action.
 | `assurance` | Calculate procedural coverage, not correctness probability |
 | `group`, `agent`, `finding` | Operate isolated partitioned or overlap investigators |
 | `audit` | Verify the event chain, state, schema, and artifacts |
+
+## Agent bootstrap
+
+`discovery guide` emits the shared Markdown operating guide. `--json` instead
+returns `{"ok":true,"result":{"markdown":"..."}}`. Use `guide --topic TOPIC` for
+phase-specific detail; `guide --help` lists the accepted topics. It reads installed
+resources without requiring `--run`, actor flags, an agent plugin, or network access.
+
+`run init` defaults `--subagents` to `disabled`. Explicit `disabled`, `partitioned`,
+and `overlap` remain accepted. Omitting the flag has the same logical input as
+explicit `disabled`, including on an idempotent retry. Existing runs keep their
+recorded mode. The agent supplies the request file and mutation identity; the user
+can provide their request in chat.
 
 ## Natural research operations
 
@@ -124,7 +138,7 @@ file until the result is known.
 
 ## Output and exit status
 
-Success uses:
+`guide` uses plain Markdown unless `--json` is supplied. Other successful commands use:
 
 ```json
 {"ok":true,"result":{}}

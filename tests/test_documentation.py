@@ -14,6 +14,8 @@ PRIMARY_DOCS = [
     ROOT / "docs/guides/resume-and-recovery.md",
     ROOT / "docs/guides/investigator-modes.md",
     ROOT / "docs/reference/cli.md",
+    ROOT / "docs/reference/agent-integration.md",
+    ROOT / "AGENT_GUIDE.md",
 ]
 
 
@@ -30,7 +32,15 @@ def test_primary_documentation_has_a_short_entry_point_and_clear_path():
 def test_primary_documentation_links_resolve():
     link_pattern = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     failures = []
-    for path in [ROOT / "README.md", *sorted((ROOT / "docs").rglob("*.md"))]:
+    for path in [
+        ROOT / "README.md",
+        ROOT / "AGENT_GUIDE.md",
+        ROOT / "AGENTS.md",
+        ROOT / "CLAUDE.md",
+        ROOT / ".cursor/rules/discovery.mdc",
+        *sorted((ROOT / "skills").rglob("*.md")),
+        *sorted((ROOT / "docs").rglob("*.md")),
+    ]:
         for link in link_pattern.findall(path.read_text()):
             if link.startswith(("http://", "https://", "mailto:", "#")):
                 continue
