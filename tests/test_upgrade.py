@@ -16,7 +16,7 @@ from discovery.domain.errors import DiscoveryError
 from discovery.domain.policy import POLICY
 
 
-@pytest.fixture(params=[3, 4, 5])
+@pytest.fixture(params=[3, 4, 5, 6])
 def legacy(tmp_path, monkeypatch, request):
     version, seed = (request.param, None) if isinstance(request.param, int) else request.param
     source = tmp_path / "source"
@@ -35,6 +35,8 @@ def legacy(tmp_path, monkeypatch, request):
             else "ALTER TABLE technical_spec_revision ADD COLUMN"
             if version == 4
             else "CREATE TABLE defeater_check"
+            if version == 5
+            else "ALTER TABLE assumption ADD COLUMN scope"
         )[0]
     )
     schema += f"PRAGMA user_version = {version};\n"
@@ -160,11 +162,14 @@ def test_failed_upgrade_rolls_back_schema_and_audit(legacy, monkeypatch):
     assert (
         "structure_sha256"
         in {r[1] for r in con.execute("PRAGMA table_info(technical_spec_revision)")}
-    ) == (version == 5)
-    assert not con.execute("SELECT 1 FROM sqlite_master WHERE name='defeater_check'").fetchone()
-    assert not con.execute(
-        "SELECT 1 FROM sqlite_master WHERE name='conclusion_assessment'"
-    ).fetchone()
+    ) == (version >= 5)
+    assert bool(
+        con.execute("SELECT 1 FROM sqlite_master WHERE name='defeater_check'").fetchone()
+    ) == (version >= 6)
+    assert bool(
+        con.execute("SELECT 1 FROM sqlite_master WHERE name='conclusion_assessment'").fetchone()
+    ) == (version >= 6)
+    assert not con.execute("SELECT 1 FROM sqlite_master WHERE name='assumption_claim'").fetchone()
     assert verify(con, root)["valid"]
     con.close()
 
@@ -186,7 +191,7 @@ def test_schema5_upgrade_backfills_owner_without_rewriting_defeater(legacy):
             "linked_by_actor_id": before["created_by_actor_id"],
             "dt_created": before["dt_created"],
         }
-        assert con.execute("PRAGMA user_version").fetchone()[0] == 6
+        assert con.execute("PRAGMA user_version").fetchone()[0] == 7
         assert (
             con.execute(
                 "SELECT previous_event_hash FROM event_log ORDER BY event_log_id DESC"

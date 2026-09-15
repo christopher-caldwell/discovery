@@ -60,10 +60,36 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
             "Strategy is terminal.",
         )
         claims = [resolve(con, "claim", r) for r in data["claims"]]
+        assumptions = [resolve(con, "assumption", r) for r in data["assumptions"]]
         require(
             all(c["claim_status"] == "admissible" for c in claims),
             "DECISION_TRACE_REQUIRED",
             "Link admissible claims.",
+        )
+        require(
+            all(RANK[c["impact"]] >= RANK[data["impact"]] for c in claims),
+            "DECISION_CLAIM_IMPACT_TOO_LOW",
+            "A linked claim cannot understate the impact of its dependent decision.",
+        )
+        require(
+            claims or assumptions,
+            "DECISION_TRACE_REQUIRED",
+            "Link an admissible claim or an active explicit assumption.",
+        )
+        require(
+            all(a["assumption_status"] == "active" for a in assumptions),
+            "DECISION_TRACE_REQUIRED",
+            "Linked assumptions must be active.",
+        )
+        require(
+            all(RANK[a["impact"]] >= RANK[data["impact"]] for a in assumptions),
+            "ASSUMPTION_IMPACT_TOO_LOW",
+            "An assumption cannot understate the impact of its dependent decision.",
+        )
+        require(
+            data["impact"] != "critical" or any(c["impact"] == "critical" for c in claims),
+            "CRITICAL_DECISION_REQUIRES_CLAIM",
+            "A critical decision requires an admissible critical claim.",
         )
         d = entity(
             con,
@@ -79,6 +105,18 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
             con.execute(
                 "INSERT INTO technical_decision_claim VALUES (?,?,?)",
                 (d["id"], c["claim_id"], "depends_on"),
+            )
+        for assumption in assumptions:
+            con.execute(
+                "INSERT INTO assumption_decision "
+                "(assumption_id,technical_decision_id,dependency_reason,linked_by_actor_id) "
+                "VALUES (?,?,?,?)",
+                (
+                    assumption["assumption_id"],
+                    d["id"],
+                    "Decision explicitly depends on this assumption",
+                    actor,
+                ),
             )
         return d
     if name in ("decision.accept", "decision.reject"):
@@ -132,7 +170,7 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
             technical_decision_id=d["technical_decision_id"],
             obligation_description=data["text"],
             impact=data["impact"],
-            evidence_profile="empirical" if data["impact"] == "critical" else data["profile"],
+            evidence_profile=data["profile"],
         )
     if name.startswith("obligation."):
         o = resolve(con, "obligation", data["ref"])

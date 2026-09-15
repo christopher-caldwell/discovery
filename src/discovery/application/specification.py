@@ -1,4 +1,3 @@
-import json
 import sqlite3
 from pathlib import Path
 
@@ -16,29 +15,6 @@ from discovery.domain.completion import (
 )
 from discovery.domain.encoding import canonical, digest
 from discovery.domain.errors import require
-
-
-def markdown_structure(contents: dict, artifacts: dict) -> dict:
-    """Keep execution payloads in the exact handoff/receipts, not repeated prose."""
-    experiments = []
-    for experiment in contents["experiment"]:
-        row = {
-            key: value
-            for key, value in experiment.items()
-            if key not in ("command_json", "environment_json")
-        }
-        receipt = artifacts.get(experiment["execution_artifact_id"])
-        row["execution_receipt"] = (
-            {
-                "ref": f"A-{receipt['artifact_id']:03d}",
-                "sha256": receipt["artifact_sha256"],
-                "run_relative_path": receipt["storage_path"],
-            }
-            if receipt
-            else None
-        )
-        experiments.append(row)
-    return {**contents, "experiment": experiments}
 
 
 def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False) -> dict:
@@ -60,11 +36,44 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
         "defeater_evidence": snapshot["defeater_evidence"],
         "arguments": snapshot["argument"],
         "argument_evidence": snapshot["argument_evidence"],
+        "assumption_claims": snapshot.get("assumption_claim", []),
+        "assumption_decisions": snapshot.get("assumption_decision", []),
     }
     if "defeater_check" in snapshot:
         manifest["defeater_checks"] = snapshot["defeater_check"]
-    text = "# " + snapshot["run"]["run_title"] + "\n\n" + narrative.decode("utf-8") + "\n\n"
+    narrative_text = narrative.decode("utf-8").lstrip()
+    # The renderer owns the document title. Accept an authored H1 for convenience,
+    # but remove it from the body so the product artifact has exactly one title.
+    if narrative_text.startswith("# "):
+        _, separator, narrative_text = narrative_text.partition("\n")
+        narrative_text = narrative_text.lstrip() if separator else ""
+    text = "# " + snapshot["run"]["run_title"] + "\n\n" + narrative_text + "\n\n"
     text += assessments.markdown(snapshot, narrative_sha256=digest(narrative))
+    text += "## Assumptions and conditional conclusions\n\n"
+    active_assumptions = [a for a in snapshot["assumption"] if a["assumption_status"] == "active"]
+    if active_assumptions:
+        for assumption in active_assumptions:
+            linked_claims = [
+                f"C-{link['claim_id']:03d}"
+                for link in snapshot.get("assumption_claim", [])
+                if link["assumption_id"] == assumption["assumption_id"]
+            ]
+            linked_decisions = [
+                f"D-{link['technical_decision_id']:03d}"
+                for link in snapshot.get("assumption_decision", [])
+                if link["assumption_id"] == assumption["assumption_id"]
+            ]
+            dependencies = ", ".join(linked_claims + linked_decisions) or "none recorded"
+            text += (
+                f"- AS-{assumption['assumption_id']:03d} ({assumption['impact']}): "
+                f"{assumption['assumption_text']}\n"
+                f"  Scope: {assumption.get('scope') or 'Not recorded'}. "
+                f"Invalidates when: {assumption.get('invalidation_condition') or 'Not recorded'}. "
+                f"Dependent claims/decisions: {dependencies}.\n"
+            )
+    else:
+        text += "No active assumptions.\n"
+    text += "\n"
     text += "## Structured technical requirements\n\n"
     decisions = {d["technical_decision_id"]: d for d in snapshot["technical_decision"]}
     groups = {}
@@ -86,33 +95,56 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
                 f"  Verification: {r['verification_plan']}\n"
             )
         text += "\n"
-    text += (
-        "\n## Structured discovery record\n\n"
-        "Experiment commands and environments are retained in full in "
-        "[handoff.json](handoff.json), under `traceability.experiment` by `experiment_id`. "
-        "Registered receipts contain the executed argv and results; their references and "
-        "hashes below resolve through [evidence-manifest.json](evidence-manifest.json). "
-        "Receipt paths are relative to the original run directory. A null receipt means "
-        "no execution receipt is registered, not a successful result.\n\n```json\n"
-        + json.dumps(markdown_structure(contents, artifacts), indent=2)
-        + "\n```\n"
-    )
-    text += (
-        "\n## Limitations and adversarial record\n\n```json\n"
-        + json.dumps(
-            {
-                "checks": snapshot["adversarial_check"],
-                "defeaters": snapshot["defeater"],
-                **(
-                    {"defeater_checks": snapshot["defeater_check"]}
-                    if "defeater_check" in snapshot
-                    else {}
-                ),
-                "assurance": report,
-            },
-            indent=2,
+    text += "\n## Validation performed\n\n"
+    if snapshot["experiment"]:
+        for experiment in snapshot["experiment"]:
+            receipt = artifacts.get(experiment["execution_artifact_id"])
+            receipt_text = (
+                f"A-{receipt['artifact_id']:03d}, sha256 {receipt['artifact_sha256']}, "
+                f"run-relative `{receipt['storage_path']}`"
+                if receipt
+                else "no execution receipt"
+            )
+            text += (
+                f"- EXP-{experiment['experiment_id']:03d} — "
+                f"{experiment['experiment_name']}: {experiment['experiment_status']}. "
+                f"Result: {experiment['result_summary'] or 'not yet interpreted'}. "
+                f"Receipt: {receipt_text}.\n"
+            )
+            if experiment["limitations"]:
+                text += f"  Limitations: {experiment['limitations']}\n"
+    else:
+        text += "No experiment was required for this proposal.\n"
+
+    text += "\n## Adversarial findings and remaining risks\n\n"
+    if snapshot["defeater"]:
+        for defeater in snapshot["defeater"]:
+            text += (
+                f"- DEF-{defeater['defeater_id']:03d} "
+                f"({defeater['defeater_status']}, {defeater['impact']}): "
+                f"{defeater['challenge']}\n"
+            )
+    else:
+        text += "No defeaters are recorded. Review coverage is listed in the machine handoff.\n"
+    incomplete = [
+        check
+        for check in snapshot["adversarial_check"]
+        if not check["check_status"].startswith("completed")
+    ]
+    for check in incomplete:
+        text += (
+            f"- CH-{check['adversarial_check_id']:03d} ({check['check_status']}): "
+            f"{check['check_name']} — {check['disposition_reason'] or 'not yet dispositioned'}\n"
         )
-        + "\n```\n"
+
+    text += (
+        "\n## Traceability and audit material\n\n"
+        "The readable specification intentionally omits raw ledger state and execution payloads. "
+        "Exact requirements, decisions, graph relationships, experiment commands, review checks, "
+        "and procedural assurance remain in [handoff.json](handoff.json). Artifact hashes and "
+        "run-relative locations remain in [evidence-manifest.json](evidence-manifest.json). "
+        "Paths resolve relative to the original Discovery run directory. Procedural coverage is "
+        "supporting audit information, not a probability that this proposal is correct.\n"
     )
     handoff = {
         "format": "discovery-handoff-v1",
@@ -133,19 +165,33 @@ def prepare(root: Path, snapshot: dict, narrative: bytes, *, final: bool = False
         "handoff.json": canonical(handoff).encode(),
         "discovery-summary.md": (
             "# Discovery summary\n\n"
-            + ("Finalized" if final else "Draft")
-            + "\n\n"
-            + canonical(
-                {
-                    "assurance": report,
-                    "confidence": confidence,
-                    "limitations": [
-                        c["disposition_reason"]
-                        for c in snapshot["adversarial_check"]
-                        if not c["check_status"].startswith("completed")
-                    ],
-                }
+            + (
+                "Finalized technical recommendation."
+                if final
+                else "Draft technical recommendation."
             )
+            + "\n\nRead [technical-spec.md](technical-spec.md) for the engineering answer. "
+            "Read [handoff.json](handoff.json) only when exact machine traceability is needed.\n\n"
+            + "## Current conditions\n\n"
+            + (
+                "\n".join(
+                    f"- AS-{a['assumption_id']:03d}: {a['assumption_text']}"
+                    for a in active_assumptions
+                )
+                if active_assumptions
+                else "- No active assumptions."
+            )
+            + "\n\n## Remaining review limits\n\n"
+            + (
+                "\n".join(
+                    f"- {c['check_name']}: {c['disposition_reason'] or c['check_status']}"
+                    for c in incomplete
+                )
+                if incomplete
+                else "- No incomplete adversarial checks."
+            )
+            + "\n\nConclusion confidence is explained in the technical specification; "
+            "procedural scores, when present, are retained in the machine handoff.\n"
         ).encode(),
     }
     return {

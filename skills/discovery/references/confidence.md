@@ -62,5 +62,5 @@ exports do not themselves stale it. Old assessments remain visible and attribute
 A stale assessment must not be presented as current confidence. Record a fresh
 assessment after considering the changed evidence; do not merely copy its rating.
 
-Schema 5 runs remain readable with no assessment. Upgrade an active run explicitly
-before writing schema 6 records; historical finalized runs are not backfilled.
+Schema 5/6 runs remain readable. Upgrade an active run explicitly before writing
+schema 7 records; historical finalized runs are not backfilled.

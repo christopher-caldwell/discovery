@@ -1,5 +1,8 @@
 # Discovery System Design Package
 
+> Historical design handoff. The current product intent, implementation contract, and
+> runtime schema supersede this package where they differ.
+
 This package collects the current first-pass design work for the Discovery CLI/skill that is intended to sit upstream of Task Ledger and Independent Consensus Review.
 
 ## Current direction
@@ -69,13 +72,11 @@ The CLI should preserve Task Ledger-style ergonomics where applicable: machine-r
 Initial SQLite schema pass.
 
 ### `schema/discovery_ddl_v2.sql`
-Current schema revision after the CLI/state-machine design pass. **Use this as the current schema reference.**
+Final schema draft from the original design pass. It is not the current runtime schema.
 
 ### `specs/discovery_cli_contract_v1.md`
-Current command, transaction, phase-gate, lease, idempotency, regression, research-lane, experiment, and audit contract.
-
-### `references/independent-consensus-audit-reference.zip`
-The older Independent Consensus Audit supplied as a reference point. It is not normative; useful ideas should continue to be evolved or discarded as Discovery is dogfooded.
+Original command, transaction, phase-gate, lease, idempotency, regression,
+research-lane, experiment, and audit contract.
 
 ## Recommended next implementation slice
 

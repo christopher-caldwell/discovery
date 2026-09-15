@@ -2,7 +2,7 @@
 
 Global identity/request flags precede each mutation. Read commands need only
 `--run` and `--json`. The release remains 0.2.0 during iteration; the current
-storage format is schema 6. Active schema 3/4/5 runs use explicit `run upgrade`; finalized schema 5 runs remain readable.
+storage format is schema 7. Active schema 3/4/5/6 runs use explicit `run upgrade`; finalized schema 5/6 runs remain readable.
 
 ## Phase 3
 
@@ -13,8 +13,8 @@ storage format is schema 6. Active schema 3/4/5 runs use explicit `run upgrade`;
    --text ... --rationale ... --impact material`. Repeat `--claim` for multiple
    admissible dependencies. Accept/reject each decision with a reason.
 3. Add `obligation create --decision D-001 --text ... --impact material --profile
-   primary`. Profiles are `primary` and `empirical`; critical impact forces the
-   empirical profile. Attach active evidence with `obligation attach-evidence`,
+   primary`. Profiles are `primary` and `empirical`; choose the profile based on the
+   obligation being proved rather than impact alone. Attach active evidence with `obligation attach-evidence`,
    or a same-decision experiment with `obligation attach-experiment`.
 4. Use `obligation satisfy --reason ...` only after evaluating its evidence.
    The CLI checks support. `fail`, `block`, and `not-applicable` preserve explicit
@@ -37,7 +37,8 @@ creates a planned attempt. `experiment exec EXP-001 --command
 current source into a deterministic scratch directory, executes the exact argv,
 and registers a result artifact. No shell is implicit. The copy includes the
 baseline's dirty/untracked files and excludes its frozen generated directories.
-Copies with symlinks fail closed and require an explicitly prepared safe fixture.
+Symlink targets are materialized inside the disposable tree so common package-manager
+links remain usable without retaining a path back to the original project.
 
 Use `--command-file /absolute/command.json` instead of `--command` for multiline
 probes. The UTF-8 file contains a JSON argv array; exactly one input is required.
@@ -55,16 +56,23 @@ script under its original basename with exclusive creation, and runs it with
 overwritten. For scripts already in the source baseline, use ordinary argv
 pointing to their relative path instead.
 
-The current executor requires macOS `sandbox-exec`. It permits filesystem reads,
-confines writes to the disposable copy, denies networking, and supplies a minimal
-environment without inherited credentials. It permits a process to signal its own
-children so test runners can clean up their workers; unrelated process signalling
-remains denied. It is not credential-read isolation
-or a virtual machine. There is no unsandboxed fallback. This prevents commands
-from editing the original tree or contacting production databases; local copied
-SQLite files can be exercised within the sandbox.
+The default executor runs a reviewed command in a disposable copy with a scrubbed
+environment. It is the ordinary, platform-neutral path. It does not prevent external
+effects, so never use it for untrusted code, production writes, or commands likely to
+contact mutation-capable live services. Use disposable local databases and synthetic
+or sanitized data only. Production credentials are never an experiment input. A model
+may query an explicitly read-only provider outside the subprocess and capture that
+result as research evidence; it must not use the experiment runner for live mutations.
+Arguments containing the original source path are rejected and source drift is checked
+afterward, but those are guardrails rather than confinement. If a safe test environment
+does not exist, finish the attempt as blocked and record what is needed.
 
-A result records command, environment, source identity, the exact sandbox policy
+`--execution-mode restricted` requests the retained macOS Seatbelt adapter. It limits
+writes to the copy, denies networking, and never falls back if unavailable. Use it
+when an investigation specifically benefits from that stronger local boundary, not
+as a prerequisite for ordinary Discovery work.
+
+A result records command, environment, source identity, the exact execution policy
 (`sandbox_profile` on new receipts), before/after tree hashes,
 stdout/stderr, exit code, timeout, and execution times. Capture uses bounded
 pipes, preserving existing project log files. Exceeding 2,000,000 bytes on either
@@ -96,6 +104,12 @@ completed_no_finding|completed_findings|not_applicable|unavailable|inaccessible
 --reason ... --report FILE`. Reports must reflect actual adversarial work.
 `completed_findings` requires at least one linked defeater.
 
+When one substantive report genuinely covers several categories, use `challenge
+review --check CH-001 --check CH-002 ...` to bind that report and disposition to all
+of them in one transaction. This reduces duplicate bookkeeping; each category still
+needs a specific reasoned treatment in the report, and finding dispositions still
+require linked defeaters.
+
 Use `defeater create --check CH-001 --claim C-001` or `--decision D-001`, with
 `--evidence-ref E-001 --text ... --impact ...`. New proof/challenge evidence can be
 captured in Phases 3 and 4 without reopening unrelated Phase 2 claims. Changes to
@@ -123,6 +137,10 @@ finalizes the run atomically. Further mutations are rejected.
 `<run>/exports/<spec-uuid>/`: `technical-spec.md`, `discovery-summary.md`,
 `evidence-manifest.json`, and `handoff.json`. It is safe to repeat and refuses
 conflicting existing files. It does not create tasks in Taskledger.
+
+The renderer owns the sole top-level heading in `technical-spec.md`; a leading H1 in
+the authored narrative is removed as redundant. The Markdown specification is the
+primary implementation artifact, while JSON files retain exhaustive machine state.
 
 ## Leased investigators
 
@@ -173,7 +191,7 @@ to a final technical specification or a standalone archive of artifact bytes.
 
 
 One defect can be linked to several current checks without duplicate records; see
-[canonical findings](canonical-defeaters.md). Optional conclusion assessments are
+[canonical findings](../reference/canonical-defeaters.md). Optional conclusion assessments are
 attributed support ratings, separate from procedural assurance. Use
 `assessment record --file FILE` and `assessment list`; see the
-[assessment guide](../skills/discovery/references/confidence.md).
+[assessment guide](../../skills/discovery/references/confidence.md).

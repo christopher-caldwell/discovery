@@ -6,6 +6,8 @@ from discovery.domain.investigation import claim_violations, phase_two_violation
 STRUCTURE = (
     "clarification_question",
     "assumption",
+    "assumption_claim",
+    "assumption_decision",
     "research_need",
     "research_lane",
     "research_lane_need",
@@ -105,6 +107,7 @@ def decision_proof_violations(state: dict, decision_id: int) -> list[dict]:
 
 def design_violations(state: dict, *, draft: bool = True) -> list[dict]:
     failures = phase_two_violations(state)
+    rank = {"contextual": 0, "material": 1, "critical": 2}
 
     def fail(code, message):
         failures.append({"code": code, "message": message})
@@ -138,11 +141,28 @@ def design_violations(state: dict, *, draft: bool = True) -> list[dict]:
             if x["technical_decision_id"] == did
         ]
         claims = [c for c in state["claim"] if c["claim_id"] in links]
-        if d["impact"] != "contextual" and not claims:
+        assumption_links = [
+            x for x in state.get("assumption_decision", []) if x["technical_decision_id"] == did
+        ]
+        valid_assumptions = [
+            a
+            for a in state["assumption"]
+            if a["assumption_status"] in ("active", "discharged")
+            and any(x["assumption_id"] == a["assumption_id"] for x in assumption_links)
+        ]
+        if d["impact"] != "contextual" and not claims and not valid_assumptions:
             fail("DECISION_TRACE_REQUIRED", d["decision_statement"])
+        if len(valid_assumptions) != len(assumption_links):
+            fail("DECISION_ASSUMPTION_STALE", d["decision_statement"])
+        if any(rank[a["impact"]] < rank[d["impact"]] for a in valid_assumptions):
+            fail("ASSUMPTION_IMPACT_TOO_LOW", d["decision_statement"])
+        if d["impact"] == "critical" and not claims:
+            fail("CRITICAL_DECISION_REQUIRES_CLAIM", d["decision_statement"])
         for c in claims:
             if c["claim_status"] != "admissible" or claim_violations(state, c):
                 fail("DECISION_CLAIM_UNSUPPORTED", c["claim_statement"])
+            if rank[c["impact"]] < rank[d["impact"]]:
+                fail("DECISION_CLAIM_IMPACT_TOO_LOW", c["claim_statement"])
         obligations = [o for o in state["proof_obligation"] if o["technical_decision_id"] == did]
         if d["impact"] != "contextual" and not obligations:
             fail("PROOF_REQUIRED", d["decision_statement"])

@@ -13,6 +13,9 @@ discovery = "discovery.cli:main"
 dev = ["pytest>=8", "ruff>=0.12"]
 [tool.hatch.build.targets.wheel]
 packages = ["src/discovery"]
+[tool.hatch.build.targets.wheel.force-include]
+"AGENT_GUIDE.md" = "discovery/_guide/AGENT_GUIDE.md"
+"skills/discovery/references" = "discovery/_guide/references"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["fixtures"]

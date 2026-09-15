@@ -1,5 +1,9 @@
 # Scenario coverage ledger
 
+> Historical evaluation ledger through the schema-6 campaign. Preserve its evidence
+> and limitations; use the current contract and product-realignment evidence for
+> schema-7 behavior.
+
 Companion to [the scenario specifications](scenario-specs.md). This distinguishes
 existing executable safeguards from observed investigation quality. Test names
 below identify narrowly scoped assertions, not proof of the full scenario.
@@ -27,8 +31,8 @@ below identify narrowly scoped assertions, not proof of the full scenario.
 | S19 document/confidence | `test_interim_report_includes_answered_need_and_resolvable_artifact_links` | Operator export reviews prompted report fixes | Numeric conclusion confidence absent; fresh reader review |
 | S20 proportionality | Evaluation recorder; no CLI model-token quota | 35 calls simple, 46 flawed; 31-call replay reused answers | Independent repeats and measured model usage |
 
-Historical details: [Taskledger evaluation](../taskledger-vetting-evaluation.md),
-[Boilerman evaluation](../boilerman-full-evaluation.md). The current campaign must
+Historical details: [Taskledger evaluation](../taskledger-vetting.md),
+[Boilerman evaluation](../boilerman-full.md). The current campaign must
 append its own results with artifacts and limitations; these older observations
 must not be relabeled as new isolated experiments.
 

@@ -1,5 +1,8 @@
 # Refinement iteration: findings, confidence and investigation cost
 
+> Historical schema-6 evaluation record. Counts and observations below describe the
+> recorded campaign, not the current schema-7 implementation contract.
+
 This iteration follows [the Phase 4 campaign](phase4-retry.md). Its purpose is to
 improve the discovery process from observed behavior, not certify a proposed
 implementation. Release remains 0.2.0; active storage moves explicitly to schema 6.

@@ -3,6 +3,7 @@
 
 def claim_violations(state: dict, claim: dict) -> list[dict]:
     failures = []
+    rank = {"contextual": 0, "material": 1, "critical": 2}
 
     def fail(code: str, message: str) -> None:
         failures.append({"code": code, "message": message})
@@ -13,6 +14,16 @@ def claim_violations(state: dict, claim: dict) -> list[dict]:
     active_sources = {
         s["source_repository_id"] for s in state["sources"] if not s["observed_drift"]
     }
+    assumption_links = [
+        link for link in state.get("assumption_claim", []) if link["claim_id"] == claim["claim_id"]
+    ]
+    assumptions = {item["assumption_id"]: item for item in state.get("assumption", [])}
+    for link in assumption_links:
+        assumption = assumptions.get(link["assumption_id"])
+        if not assumption or assumption["assumption_status"] not in ("active", "discharged"):
+            fail("CLAIM_ASSUMPTION_STALE", claim["claim_statement"])
+        elif rank[assumption["impact"]] < rank[claim["impact"]]:
+            fail("ASSUMPTION_IMPACT_TOO_LOW", claim["claim_statement"])
 
     def admissible(e: dict) -> bool:
         artifact = artifacts.get(e["artifact_id"], {})
@@ -51,11 +62,50 @@ def claim_violations(state: dict, claim: dict) -> list[dict]:
             "ARGUMENT_NOT_VERIFIED",
             "A passed supporting argument with active artifact-backed evidence is required.",
         )
+    method = claim.get("verification_method", "inspection")
+    availability = claim.get("verification_availability", "available")
+    rationale = claim.get("verification_rationale", "")
+    methods_by_kind = {
+        "current_behavior": {"inspection", "analysis", "test", "experiment"},
+        "intended_behavior": {"authoritative_record"},
+        "vendor_capability": {"analysis", "authoritative_record", "test", "experiment"},
+        "constraint": {"inspection", "analysis", "authoritative_record", "test", "experiment"},
+    }
+    if method not in methods_by_kind.get(claim["claim_kind"], set()):
+        fail(
+            "VERIFICATION_METHOD_MISMATCH",
+            f"{method} cannot establish a {claim['claim_kind']} claim; choose a method "
+            "that fits the proposition.",
+        )
+    if not rationale.strip():
+        fail(
+            "VERIFICATION_RATIONALE_REQUIRED",
+            "Explain why the selected verification method can substantiate this claim.",
+        )
+    if availability != "available":
+        fail(
+            "REQUIRED_VERIFICATION_UNAVAILABLE",
+            f"Required {method} verification is {availability}; preserve the claim as unknown.",
+        )
     profile = state["policy"]["evidence_profiles"].get(claim["impact"], [])
     if "primary_evidence" in profile and not any(
         e["evidence_kind"] in ("primary", "empirical") for e in support
     ):
         fail("PRIMARY_EVIDENCE_REQUIRED", "Direct/primary evidence is required for this impact.")
+    if method == "authoritative_record" and not any(
+        e["evidence_kind"] == "primary" for e in support
+    ):
+        fail(
+            "AUTHORITATIVE_RECORD_REQUIRED",
+            "The selected method requires a primary authoritative record.",
+        )
+    if method in ("test", "experiment") and not any(
+        e["evidence_kind"] == "empirical" for e in support
+    ):
+        fail(
+            "EMPIRICAL_EVIDENCE_REQUIRED",
+            f"The selected {method} method requires empirical evidence.",
+        )
     lane_id = claim["research_lane_id"]
     lane = next(
         (
@@ -83,12 +133,32 @@ def claim_violations(state: dict, claim: dict) -> list[dict]:
                 and m["iteration_no"] == lane["closure_iteration"]
                 and lane["closure_status"] in ("running", "completed")
             ]
-        if not any(m["disposition"] == "completed" for m in methods):
+        completed = [m for m in methods if m["disposition"] == "completed"]
+        if method_name == "falsification":
+            completed = [
+                method
+                for method in completed
+                if any(
+                    activity["research_method_id"] == method["research_method_id"]
+                    and activity["activity_kind"] == "falsification"
+                    and any(
+                        evidence["artifact_id"] == activity["result_artifact_id"]
+                        and any(
+                            link["evidence_id"] == evidence["evidence_id"]
+                            and any(
+                                argument["argument_id"] == link["argument_id"]
+                                and argument["claim_id"] == claim["claim_id"]
+                                for argument in args
+                            )
+                            for link in state["argument_evidence"]
+                        )
+                        for evidence in state["evidence"]
+                    )
+                    for activity in state["research_activity"]
+                )
+            ]
+        if not completed:
             fail("VERIFICATION_METHOD_REQUIRED", f"Complete {method_name} for this claim's lane.")
-    if "empirical_verification" in profile and not any(
-        e["evidence_kind"] == "empirical" for e in support
-    ):
-        fail("EMPIRICAL_EVIDENCE_REQUIRED", "Critical claims require empirical evidence.")
     return failures
 
 
