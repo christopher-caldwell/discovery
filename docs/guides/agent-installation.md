@@ -6,6 +6,18 @@ Open the Discovery checkout in your agent and say:
 Install this skill for me.
 ```
 
+To refresh the CLI and the current host's skill later, say:
+
+```text
+Update Discovery from this checkout.
+```
+
+To refresh every host where Discovery is already installed on the same machine, say:
+
+```text
+Update Discovery from this checkout for every installed host.
+```
+
 The native entry file selects the destination and invocation syntax for that agent.
 The agent carries out the procedure below. This is a local skill installation with
 a shared uv-managed CLI; there is no custom installer or marketplace requirement.
@@ -14,7 +26,9 @@ a shared uv-managed CLI; there is no custom installer or marketplace requirement
 
 ### 1. Resolve the source and prerequisites
 
-Use the Discovery checkout the user opened or explicitly supplied. Resolve its
+Use the Discovery checkout the user opened or explicitly supplied. For an update
+requested from an installed skill, use the source path in its `INSTALLATION.md` when
+that checkout still exists. Resolve its
 absolute path and confirm `pyproject.toml` identifies `discovery-cli`, and that
 `AGENT_GUIDE.md` and `skills/discovery/SKILL.md` exist. Do not infer a package source
 from the bare name `discovery` on a registry. If working from a link without a local
@@ -83,6 +97,12 @@ skills or managed plugin caches merely to hide a duplicate; identify any remaini
 conflict in the result. Backups inside a skills directory can themselves be discovered,
 so keep them elsewhere.
 
+An ordinary install or update changes only the current host's skill directory. When
+the user explicitly requests every installed host, inspect the normal Codex, Claude
+Code, and Cursor locations and refresh only existing directories whose `SKILL.md`
+declares `name: discovery`. Do not create missing host installations as part of an
+update.
+
 Add an `INSTALLATION.md` note inside the installed skill directory, not the source
 checkout. Record the resolved CLI executable path, uv executable path, source checkout
 and commit if available, whether the source had local changes, and reported CLI/schema
@@ -110,7 +130,8 @@ Compare the installed `SKILL.md` with its source and confirm its companion folde
 `INSTALLATION.md` note are present. Do not create a test run or modify a target project
 just to prove installation. Do not start the discovery workflow unless also requested.
 
-Report the installed skill directory, CLI path, verification result, and the native
+Report every skill directory refreshed, any host location that was absent, the CLI
+path, verification result, and the native
 invocation (`$discovery` in Codex; `/discovery` for direct Claude Code and Cursor skills).
 If the current session still has a cached skill, tell the user to open a new session.
 Distinguish file/CLI verification from observing the skill in the host UI; do not claim

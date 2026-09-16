@@ -38,3 +38,24 @@ def test_distribution_versions_agree():
     )
     assert project["project"]["version"] == plugin["version"] == skill_version == __version__
     assert version("discovery-cli") == __version__
+
+
+def test_installed_skill_routes_update_requests_to_one_reference():
+    root = Path(__file__).resolve().parents[1]
+    skill = root / "skills/discovery"
+    assert "references/update.md" in (skill / "SKILL.md").read_text()
+    assert (skill / "references/update.md").is_file()
+
+
+def test_provider_entries_define_current_and_all_host_update_scopes():
+    root = Path(__file__).resolve().parents[1]
+    entries = (
+        root / "AGENTS.md",
+        root / "CLAUDE.md",
+        root / ".cursor/rules/discovery.mdc",
+    )
+    for entry in entries:
+        text = entry.read_text()
+        assert "Update Discovery" in text
+        assert "every installed host" in text
+        assert "INSTALLATION.md" in text

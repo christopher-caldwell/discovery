@@ -8,6 +8,12 @@ to install it for Claude Code. Follow the
 as the source. It covers uv, the CLI, bundling the skill, and verification. An
 installation request does not start a Discovery investigation.
 
+“Update Discovery” refreshes the shared uv tool and this Claude Code skill. If the
+user says “update Discovery for every installed host,” also refresh matching Codex
+and Cursor skill directories that already exist. Do not create a new host installation
+unless the user asks for it. When updating from an installed skill instead of an open
+checkout, use the source recorded in its `INSTALLATION.md`.
+
 Install the shared `skills/discovery/` folder at
 `~/.claude/skills/discovery/` as a personal skill, available across projects. If
 `CLAUDE_CONFIG_DIR` is set, use its `skills/discovery/` directory. Honor an explicit

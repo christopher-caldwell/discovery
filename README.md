@@ -21,6 +21,17 @@ folder. After installation, use `$discovery` in Codex or `/discovery` in Claude 
 and Cursor. The [installation guide](docs/guides/agent-installation.md) covers the steps
 the agent performs.
 
+To refresh the shared CLI and the current host's skill later, say:
+
+```text
+Update Discovery from this checkout.
+```
+
+To refresh every existing Codex, Claude Code, and Cursor installation on the machine,
+say `Update Discovery from this checkout for every installed host.` Discovery updates
+only matching skill copies that already exist. A refreshed host may need a new session
+before it sees the new instructions.
+
 ## Use Discovery
 
 In your agent chat, invoke the skill and give it the work:

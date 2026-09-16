@@ -10,6 +10,10 @@ metadata:
 This is the optional skill entry point. The complete, agent-neutral workflow lives
 in [AGENT_GUIDE.md](../../AGENT_GUIDE.md), not in a provider-specific skill.
 
+When the user asks to install or update Discovery, do not start an investigation.
+Read [references/update.md](references/update.md) and follow it using the scope the
+user requested.
+
 When asked to run or resume Discovery, resolve the CLI, execute its `guide` command,
 and follow the returned instructions through delivery:
 
