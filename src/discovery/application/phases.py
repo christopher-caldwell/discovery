@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 
 from discovery.adapters.sqlite.queries import state
-from discovery.adapters.sqlite.records import insert, resolve
+from discovery.adapters.sqlite.records import entity, insert, resolve
 from discovery.application.initialization import surfaces
 from discovery.domain.encoding import now, uid
 from discovery.domain.errors import require
@@ -65,6 +65,7 @@ def transition(
                 "claim",
                 "obligation",
                 "experiment",
+                "assumption",
             ),
             "INVALID_ARGUMENT",
             "Unsupported regression cause kind.",
@@ -109,6 +110,25 @@ def transition(
         )
         if target == 1:
             surfaces(con, new, actor, snapshot["policy"]["mandatory_phase1_surfaces"])
+            baseline_names = set(snapshot["policy"]["mandatory_phase1_surfaces"])
+            custom = {
+                s["surface_name"]: s.get("addition_reason", "")
+                for s in snapshot["research_surface"]
+                if s["research_lane_id"] is None
+                and s["surface_name"] not in baseline_names
+                and s.get("addition_reason", "").strip()
+            }
+            for name, reason in custom.items():
+                entity(
+                    con,
+                    "surface",
+                    phase_revision_id=new,
+                    surface_kind="investigator_added",
+                    surface_name=name,
+                    is_mandatory=1,
+                    addition_reason=reason,
+                    created_by_actor_id=actor,
+                )
     con.execute(
         "UPDATE discovery_run SET current_phase_no=?, current_phase_revision_id=?, dt_modified=?",
         (target, new, now()),

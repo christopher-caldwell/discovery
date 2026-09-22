@@ -14,6 +14,7 @@ def test_capture_preserves_project_log_files(tmp_path):
         tmp_path,
         ["/usr/bin/python3", "-c", 'import sys; print("out"); print("err",file=sys.stderr)'],
         10,
+        mode="restricted",
     )
     assert result["exit_code"] == 0
     assert result["stdout"]["text"] == "out\n" and result["stderr"]["text"].endswith("err\n")
@@ -28,6 +29,7 @@ def test_output_limit_stops_noisy_process_without_log_files(tmp_path, stream):
         tmp_path,
         ["/usr/bin/python3", "-c", f'import os\nwhile True: os.write({stream},b"x"*65536)'],
         10,
+        mode="restricted",
     )
     assert result["output_limited"] and result["exit_code"] != 0 and not result["timed_out"]
     output = result["stdout" if stream == 1 else "stderr"]
@@ -42,7 +44,7 @@ child.terminate()
 assert child.wait(timeout=3) == -signal.SIGTERM
 print('child terminated')
 """
-    result = execute(tmp_path, ["/usr/bin/python3", "-c", code], 8)
+    result = execute(tmp_path, ["/usr/bin/python3", "-c", code], 8, mode="restricted")
     assert result["exit_code"] == 0, result["stderr"]
     assert "child terminated" in result["stdout"]["text"]
     assert not result["timed_out"]
@@ -61,7 +63,7 @@ except PermissionError:
 else:
     raise AssertionError('sandbox signalled unrelated process')
 """
-        result = execute(tmp_path, ["/usr/bin/python3", "-c", code], 8)
+        result = execute(tmp_path, ["/usr/bin/python3", "-c", code], 8, mode="restricted")
         assert result["exit_code"] == 0, result["stderr"]
         assert "unrelated signal denied" in result["stdout"]["text"]
         assert unrelated.poll() is None

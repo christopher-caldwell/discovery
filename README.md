@@ -1,108 +1,115 @@
 # Discovery
 
-A deterministic Python CLI for turning request assertions into a durable, reviewable research plan. SQLite owns workflow state; models and humans supply attributed semantic judgments.
+Give Discovery an engineering request and a project. Your agent investigates the
+request, checks it against the code and available evidence, and writes a technical
+specification someone can build from.
 
-**All four phases can now traverse through finalization.** Discovery supports intent clarification, evidence and claim investigation, leased partitioned/overlap investigators, strategies and proofs, isolated experiments, adversarial defeaters, and structured specification exports. The project is still iterating at **0.2.0**; the storage format is **schema 6**. See [the completion workflow](docs/completion-workflow.md) for the new commands and current boundaries.
+The request can be vague or wrong. Discovery keeps the questions, findings, and
+reasoning on disk so they survive a new chat or a switch to another agent. It stops
+before implementing the feature.
 
-## Install and validate
+## Install from your agent chat
 
-Requires Python 3.11+, SQLite 3.37+ with JSON support, Git available on PATH, and a local POSIX filesystem. No runtime Python dependencies. Development uses uv, pytest, and Ruff.
+Open this checkout in Cursor, Claude Code, or Codex and say:
+
+```text
+Install this skill for me.
+```
+
+The agent installs the CLI through uv and puts the shared skill in its own skill
+folder. After installation, use `$discovery` in Codex or `/discovery` in Claude Code
+and Cursor. The [installation guide](docs/guides/agent-installation.md) covers the steps
+the agent performs.
+
+## Use Discovery
+
+In your agent chat, invoke the skill and give it the work:
+
+```text
+Use Discovery to investigate this request against /absolute/path/to/project:
+
+[paste your request here]
+
+Produce the final technical specification. Do not implement the feature.
+```
+
+The repository includes an entry file for each agent. All three point to
+[AGENT_GUIDE.md](AGENT_GUIDE.md), which owns the workflow. You don't need to
+configure each agent or install a plugin.
+
+From another project, give your agent the path to this checkout's
+`AGENT_GUIDE.md`, or attach that file to the chat. It tells the agent how to use the
+CLI from the checkout. The agent needs local command and file access.
+
+The agent saves your request, creates the run, gathers evidence, and works through
+the review gates. One investigator is the default. It asks you when a missing
+product decision or unavailable access blocks the work, not for record IDs or
+routine setup choices.
+
+## CLI access
+
+Discovery needs Python 3.11 or newer, SQLite 3.37 or newer, Git, and a local
+filesystem. These commands use uv.
+
+For direct CLI use, the agent's installation makes `discovery` available. You can
+also install it manually:
 
 ```sh
-uv sync
-uv run discovery --help
+uv tool install /absolute/path/to/discovery
+discovery --version
+```
+
+The installed CLI includes the same guide and its detailed references. In any
+agent chat with access to that installation, you can say:
+
+```text
+Read the output of `discovery guide`, then use Discovery to investigate
+[request] against [project path]. Produce the final technical specification.
+```
+
+See [Getting started](docs/guides/getting-started.md) for installation and recovery.
+
+## What you get
+
+A completed run exports:
+
+- `technical-spec.md`: the recommendation, scope, design, and acceptance criteria
+- `discovery-summary.md`: the result and remaining conditions
+- `handoff.json`: decisions, requirements, and their relationships
+- `evidence-manifest.json`: evidence and artifact provenance
+
+The Markdown specification is the product. The supporting records explain why it
+says what it says. If the investigation reaches a real blocker, you get an interim
+report with the findings and unresolved questions.
+
+To continue in another chat or agent, give it the guide and the run path. It resumes
+from the saved state. Keep the run directory; its artifacts support the exported
+specification.
+
+## How it works
+
+Discovery moves through intent and scope, investigation, solution design, and
+adversarial review. A failed premise can send the work back to an earlier phase.
+The agent judges the evidence; the CLI checks required records, freshness, and
+legal transitions. Passing a gate does not make a conclusion infallible.
+
+Experiments use disposable project copies and local test data. Discovery does not
+launch models or keep a chat running after its host stops.
+
+Read the [workflow guide](docs/guides/workflow.md), the
+[specification guide](docs/guides/final-specification.md), or the
+[documentation index](docs/README.md) for more detail.
+
+## Development
+
+```sh
 uv run pytest -q
-uv run ruff check src tests
-uv run ruff format --check src tests
+uv run ruff check .
+uv run ruff format --check .
 uv build
 ```
 
-The wheel includes the executable schema. A run must not be stored on a network filesystem. Copy a live WAL database only with an appropriate SQLite backup/checkpoint procedure; copying the main database file alone is insufficient.
-
-For system-wide editable CLI installation, the direct skill, and the personal Codex plugin, follow [the installation guide](docs/AI_ORCHESTRATED_TOOL_INSTALLATION.md).
-
-## Start a run
-
-Global options precede the command. `--json` also works after the command. Every mutation requires a caller-retained request UUID and explicit actor identity. A session UUID is generated per invocation unless provided. Reuse the **same request UUID and logical input** after a lost response; use a new UUID for a new operation.
-
-```sh
-uv run discovery --json --run .discovery/runs/example \
-  --request-id 10000000-0000-4000-8000-000000000001 \
-  --actor-id 20000000-0000-4000-8000-000000000001 \
-  --actor-name 'Discovery investigator' --actor-kind model \
-  run init --title 'Investigate webhook ordering' \
-  --input /absolute/path/to/ticket.txt --source /absolute/path/to/source \
-  --subagents disabled
-
-uv run discovery --json --run .discovery/runs/example status
-uv run discovery --json --run .discovery/runs/example resume
-```
-
-The run directory is explicit; its name need not equal the generated run UUID. Each directory owns exactly one database and artifact tree. Initialization never replaces an existing run. Request contents are captured as **request assertions**, not verified evidence.
-
-`--subagents` is an explicit invocation choice. Only `disabled` is implemented in this milestone; `partitioned` and `overlap` return `FEATURE_NOT_IMPLEMENTED`. There is no interactive prompt, model API call, automatic messaging, or automatic agent dispatch.
-
-## Command surface
-
-| Command | Purpose |
-| --- | --- |
-| `run init/upgrade` | Initialize a run or explicitly upgrade active schema 3/4/5 while preserving its audit history |
-| `status`, `resume` | Read current state, observed drift, gates, next actions; resume also exposes research observations and captured report paths |
-| `question create/list/resolve` | Record questions, authority hypotheses, and attributed answers |
-| `research-need create/list/answer` | Record needs traced to the request artifact |
-| `lane create/list/depends-on/activate/reopen/closure-begin/close/check` | Link needs to scoped questions with impact, methods, surfaces, and acyclic dependencies |
-| `surface list/disposition` | Dispose current Phase 1 baseline surfaces with an explicit reason |
-| `research record` | Record a search and immutable report; optionally complete its surface and linked method in the same transaction |
-| `lead create/list/disposition` | Register leads and terminal investigated/irrelevant/duplicate/inaccessible/human-input outcomes |
-| `method create/list/disposition` | Record required research methods and completion provenance |
-| `artifact capture/list`, `source refresh/list` | Capture snapshots and replace drifted source baselines explicitly |
-| `evidence create/list/retract` | Register and retract observations with artifact provenance |
-| `claim create/list/check/evaluate/reject` | Evaluate consequence-based evidence profiles |
-| `argument create/list/verify/resolve-counter` | Record reasoning, semantic verification, and evidenced counterargument resolutions |
-| `plan snapshot/review` | Export exact review context and register an attributed semantic review of its hash |
-| `phase check/advance/regress` | Evaluate gates, move one step, or create revisions for an earlier traversal |
-| `strategy`, `decision`, `obligation`, `requirement` | Build traceable design and verify proof obligations |
-| `experiment plan/exec/finish/abort/replace` | Execute and recover isolated, audited experiments |
-| `challenge`, `defeater` | Complete exact-draft adversarial checks and resolve attacks |
-| `group`, `agent`, `finding` | Leased isolated investigators and durable reconciliation |
-| `spec draft/revise/export`, `assurance calculate` | Compile structured specifications and coverage indicators |
-| `audit verify` | Verify event chain, schema/state checksum, foreign keys, SQLite integrity, and artifacts |
-
-Run `uv run discovery --run PATH <command> --help` for required options. Entity arguments accept run-local references (`Q-001`, `RN-001`, `L-001`, `S-001`) or stored UUIDs. Regression causes use `kind:ref`, for example `need:RN-001` or `artifact:A-001`.
-
-A typical Phase 1 sequence is:
-
-1. Create questions. Blocking is the default. Record authority category, rationale, and confidence as a hypothesis; resolve with an attributed answer. Non-blocking questions must also be answered in this slice; explicit assumption commands are deferred.
-2. Create research needs, then lanes linked with `--need RN-001`. Each lane requires a concrete question, rationale, scope, impact, at least one `--method`, and at least one `--surface`. Impact cannot be lower than any linked need. Add dependencies with `lane depends-on`.
-3. Inspect `surface list`. For an actual search, first use `research record S-001 --query ... --summary ... --origin-uri ... --report /path/to/result.txt`, add `--complete-surface "reason"` when that search completes the surface, or disposition it separately as `searched`. In Phase 2, `--method M-001 --complete-method "reason"` can complete the linked method with the same recorded search. Other supported dispositions are `unavailable`, `inaccessible`, and `not_applicable`, each with a reason. They represent real limitations and must not be used as a shortcut for available research.
-4. Export `plan snapshot`. Have the model or human inspect its `context` and write a substantive review report. Submit `plan review --plan-hash HASH --outcome passed --report /path/to/review.txt`. The CLI verifies linkage and freshness; it does not decide whether the report's reasoning is correct.
-5. Inspect `phase check` and fix violations. `phase advance` moves from 1 to 2 only if all required records and the current review exist. Subsequent plan edits stale the review. Continue with [the Phase 2 workflow](docs/phase2-workflow.md).
-6. If request meaning needs correction, use `phase regress --to 1 --cause need:RN-001 --reason ...`. Questions and research remain. Revisit the new Phase 1 surfaces and review its new plan before advancing again.
-
-Every mutation above also needs the global request and actor options shown in the initialization example. Do not modify the database or durable artifacts directly.
-
-## Machine contract
-
-Success: `{"ok":true,"result":...}`. Mutations additionally return `"replayed":true|false`; replays return the original result and create no event.
-
-Failure: `{"ok":false,"error":{"code":"...","message":"...","details":{...}}}`. Machine stdout contains one JSON document, and unexpected internal diagnostics go to stderr. Exit status is 0 for success, 2 for argument/domain/integrity errors, 3 for SQLite/filesystem failures, and 4 for unexpected internal failures. Explicit `--help` uses normal argparse help text.
-
-`phase check` is a successful query even when `can_advance` is false. `phase advance` with violations and `audit verify` with corruption return nonzero. SQLite contention waits up to five seconds and then returns `SQLITE_BUSY`; retry with the same request UUID. There is no hidden unbounded retry loop.
-
-## Design authority
-
-- [Current implementation contract](docs/implementation-contract.md) describes what this release supports and its boundaries.
-- [Decision log](docs/decisions.md) records changes and clarifications to the handoff.
-- [Runtime DDL](src/discovery/adapters/sqlite/ddl.sql) is authoritative for schema version 5.
-- `discovery-design-package/` is the **unchanged historical handoff**. Within that package, DDL v2 supersedes v1; its CLI contract remains the target architecture for later slices. Its destructive SQL scripts are reference material and must never be run on a live run.
-- The archived Independent Consensus Audit is reference material, not an active skill or normative instruction. Discovery retains the requested reviewer denominator and separates support, contradiction, and omission; consensus never establishes verification.
-
-## Existing runs
-
-Use `audit verify` to inspect a schema 3/4/5 run, then execute `run upgrade` with the normal request/actor flags. Upgrade is explicit, transactional, idempotent, and preserves historical events and the frozen policy. A current Phase 1 review may need repeating because the plan records gain fields. Do not reset a run to upgrade it. Finalized schema 5 runs remain readable and exportable without an upgrade.
-
-Schema 6 adds [shared review findings](docs/canonical-defeaters.md) and attributed conclusion assessments. `resume --compact` omits repeated execution payloads while keeping recovery state and references; plain `resume` retains the full representation.
-
-## Next slice
-
-Iterate on real projects, richer evidence profiles, source-refresh granularity, and additional OS sandbox adapters. Experiments currently execute only on macOS with Seatbelt; unsupported systems fail closed. Explicit assumption/withdrawal conveniences and direct Taskledger ingestion remain future extensions. `handoff.json` is produced without modifying an execution ledger. Synthetic fixtures remain available under `tests/fixtures/phase2/`.
+The code separates CLI parsing, application operations, domain rules, and storage
+adapters. See the [implementation contract](docs/reference/implementation-contract.md)
+for those boundaries and the [agent integration guide](docs/reference/agent-integration.md)
+for the shared instructions and entry files.

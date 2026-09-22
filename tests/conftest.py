@@ -128,7 +128,6 @@ def ready(run):
 
 def review(run):
     call = run["call"]
-    snapshot = call("plan", "snapshot")["result"]
     report = run["root"].parent / "review.txt"
     report.write_text(
         "Reviewed the exact snapshot: needs and lane scope cover the request assertions."
@@ -136,8 +135,6 @@ def review(run):
     return call(
         "plan",
         "review",
-        "--plan-hash",
-        snapshot["plan_sha256"],
         "--outcome",
         "passed",
         "--report",

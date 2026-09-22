@@ -98,6 +98,57 @@ def write(
             ),
         )
         return {"uuid": c["adversarial_check_uuid"], "status": data["disposition"]}
+    if name == "challenge.review":
+        checks = [resolve(con, "challenge", ref) for ref in data["checks"]]
+        require(
+            len({c["adversarial_check_id"] for c in checks}) == len(checks),
+            "INVALID_ARGUMENT",
+            "List each reviewed challenge once.",
+        )
+        for check in checks:
+            require(
+                check["technical_spec_revision_id"] == spec["technical_spec_revision_id"]
+                and check["phase_revision_id"] == run["current_phase_revision_id"],
+                "SCOPE_MISMATCH",
+                "Every check must target the current spec and traversal.",
+            )
+            require(check["check_status"] == "pending", "INVALID_STATE", "Check already completed.")
+            if data["disposition"] == "completed_findings":
+                require(
+                    any(
+                        link["adversarial_check_id"] == check["adversarial_check_id"]
+                        for link in snapshot["defeater_check"]
+                    ),
+                    "DEFEATER_REQUIRED",
+                    "Every finding disposition needs a linked defeater.",
+                )
+        report = entity(
+            con,
+            "artifact",
+            artifact_kind="adversarial_report",
+            media_type="text/plain",
+            captured_by_actor_id=actor,
+            **prepared["artifact"],
+        )
+        for check in checks:
+            con.execute(
+                "UPDATE adversarial_check SET check_status=?,disposition_reason=?,"
+                "report_artifact_id=?,completed_by_actor_id=?,dt_modified=? "
+                "WHERE adversarial_check_id=?",
+                (
+                    data["disposition"],
+                    data["reason"],
+                    report["id"],
+                    actor,
+                    now(),
+                    check["adversarial_check_id"],
+                ),
+            )
+        return {
+            "checks": [c["adversarial_check_uuid"] for c in checks],
+            "status": data["disposition"],
+            "report": report,
+        }
     if name == "defeater.create":
         c = resolve(con, "challenge", data["check"])
         require(

@@ -18,7 +18,7 @@ FAMILIES = {
     ],
     "requirement": ["create", "list"],
     "experiment": ["plan", "list", "exec", "finish", "abort", "replace"],
-    "challenge": ["initialize", "list", "complete"],
+    "challenge": ["initialize", "list", "complete", "review"],
     "defeater": ["create", "list", "link-check", "confirm", "defeat", "accept-contextual-risk"],
     "spec": ["draft", "revise", "list", "snapshot", "export"],
     "assurance": ["calculate"],
@@ -70,7 +70,8 @@ def arguments(cmd, name, text):
         option("strategy")
         option("text")
         option("rationale")
-        cmd.add_argument("--claim", dest="claims", action="append", required=True, type=text)
+        cmd.add_argument("--claim", dest="claims", action="append", type=text, default=[])
+        cmd.add_argument("--assumption", dest="assumptions", action="append", type=text, default=[])
     if name == "requirement.create":
         for k in ("decision", "need", "text", "acceptance", "verification"):
             option(k)
@@ -94,13 +95,23 @@ def arguments(cmd, name, text):
             "--command-file", type=text, help="UTF-8 file containing a JSON argv array."
         )
         cmd.add_argument("--timeout", type=int, default=60)
+        cmd.add_argument(
+            "--execution-mode",
+            choices=["local", "restricted", "trusted-local"],
+            default="local",
+            help=(
+                "local (default) runs a reviewed command in the disposable copy; "
+                "restricted requests optional host containment and never falls back; "
+                "trusted-local is a compatibility alias for local"
+            ),
+        )
     if name == "experiment.replace":
         option("replacement")
     if name == "experiment.finish":
         option("outcome", choices=["passed", "failed", "inconclusive", "blocked"])
         option("conclusion")
         option("limitations")
-    if name == "challenge.complete":
+    if name in ("challenge.complete", "challenge.review"):
         option(
             "disposition",
             choices=[
@@ -111,13 +122,15 @@ def arguments(cmd, name, text):
                 "inaccessible",
             ],
         )
+    if name == "challenge.review":
+        cmd.add_argument("--check", dest="checks", action="append", required=True, type=text)
     if name in ("defeater.create", "defeater.link-check"):
         option("check")
     if name == "defeater.create":
         option("text")
         cmd.add_argument("--claim", type=text)
         cmd.add_argument("--decision", type=text)
-    if name in ("challenge.complete", "defeater.defeat"):
+    if name in ("challenge.complete", "challenge.review", "defeater.defeat"):
         option("report")
     if name in ("spec.draft", "spec.revise"):
         option("narrative")
@@ -132,6 +145,7 @@ def arguments(cmd, name, text):
         "abort",
         "replace",
         "complete",
+        "review",
         "confirm",
         "defeat",
         "accept-contextual-risk",

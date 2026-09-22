@@ -1,6 +1,6 @@
 # Canonical findings across adversarial checks
 
-Release 0.2.0 uses schema 6 for new writes. One defeater can cover several checks
+Release 0.2.0 introduced this behavior in schema 6; current new writes use schema 7. One defeater can cover several checks
 in the same current specification revision and Phase 4 traversal:
 
 ```sh
@@ -34,7 +34,7 @@ hash is unchanged because linking does not change the proposed design.
 ## Existing runs
 
 Inspect an old run with `audit verify`, then use the usual actor/request flags for
-`run upgrade` when continuing an active schema 3, 4, or 5 run. The schema 6 upgrade
+`run upgrade` when continuing an active schema 3, 4, 5, or 6 run. The schema 6 upgrade
 is transactional and replayable. It backfills original owner links with the
 original actor and timestamp and preserves canonical defeater rows, earlier
 events, and the run's frozen policy. The upgrade also adds the conclusion

@@ -10,6 +10,29 @@ from discovery.domain.errors import require
 from discovery.domain.investigation import lane_violations
 
 
+def ensure_falsification_method(con: sqlite3.Connection, lane_id: int) -> dict:
+    """Return the lane's primary falsification obligation, creating it once."""
+    row = con.execute(
+        "SELECT * FROM research_method WHERE research_lane_id=? "
+        "AND method_category='primary' AND method_name='falsification' AND iteration_no=0",
+        (lane_id,),
+    ).fetchone()
+    if row:
+        return {
+            "id": row["research_method_id"],
+            "uuid": row["research_method_uuid"],
+            "ref": f"M-{row['research_method_id']:03d}",
+        }
+    return entity(
+        con,
+        "method",
+        research_lane_id=lane_id,
+        method_category="primary",
+        method_name="falsification",
+        iteration_no=0,
+    )
+
+
 def complete_record(con: sqlite3.Connection, surface_id: int, method_id: int | None, data: dict):
     """Apply explicit completion reasons after the validated activity has been inserted."""
     if data.get("complete_surface"):
@@ -103,6 +126,15 @@ def write(
                 "LANE_HAS_OPEN_LEADS",
                 "Investigate pending leads before closure.",
             )
+            # A critical claim must be deliberately challenged. Provision that
+            # obligation before closure starts so it is ordinary planned work,
+            # rather than a surprise emitted by the closing gate.
+            for claim in con.execute(
+                "SELECT * FROM claim WHERE research_lane_id=? AND impact='critical' "
+                "AND claim_status NOT IN ('rejected','superseded')",
+                (lid,),
+            ).fetchall():
+                ensure_falsification_method(con, claim["research_lane_id"])
             iteration = lane["closure_iteration"] + 1
             con.execute(
                 "UPDATE research_lane SET "
@@ -272,7 +304,13 @@ def write(
         )
         reopen(con, lane["research_lane_id"])
         return result
-    if name in ("method.disposition", "surface.disposition", "research.record"):
+    if name in (
+        "method.disposition",
+        "surface.disposition",
+        "research.record",
+        "research.capture",
+        "research.finding",
+    ):
         kind = "method" if name.startswith("method") else "surface"
         target = resolve(con, kind, data["ref"])
         lid = target["research_lane_id"]
@@ -305,11 +343,22 @@ def write(
                 "LANE_CLOSURE_STALE",
                 "Method belongs to an inactive closure iteration.",
             )
-        if name == "research.record":
+        if name in ("research.record", "research.capture", "research.finding"):
             require(
                 not data.get("complete_method") or method is not None,
                 "INVALID_ARGUMENT",
                 "Method completion needs --method.",
+            )
+            require(
+                not (
+                    name in ("research.capture", "research.finding")
+                    and method
+                    and method["method_category"] == "closure"
+                    and data.get("complete_method")
+                ),
+                "LANE_CLOSURE_STALE",
+                "New evidence invalidates the closure sweep; begin a fresh closure before "
+                "completing its methods.",
             )
             artifact = entity(
                 con,
@@ -332,13 +381,116 @@ def write(
                 result_summary=data["summary"],
                 result_artifact_id=artifact["id"],
             )
+            evidence = []
+            if name in ("research.capture", "research.finding"):
+                artifact_row = resolve(con, "artifact", artifact["uuid"])
+                request_hash = con.execute(
+                    "SELECT artifact_sha256 FROM artifact WHERE artifact_id=?",
+                    (run["input_artifact_id"],),
+                ).fetchone()[0]
+                require(
+                    artifact_row["artifact_sha256"] != request_hash,
+                    "ASSERTION_NOT_EVIDENCE",
+                    "Recapturing the request does not turn its assertions into evidence.",
+                )
+                evidence = [
+                    entity(
+                        con,
+                        "evidence",
+                        research_lane_id=lid,
+                        artifact_id=artifact["id"],
+                        evidence_kind=data["evidence_kind"],
+                        source_locator=data["locator"],
+                        observation=observation,
+                        extracted_by_actor_id=actor,
+                    )
+                    for observation in data["observation"]
+                ]
+                reopen(con, lid)
             complete_record(
                 con,
                 target["research_surface_id"],
                 method["research_method_id"] if method else None,
                 data,
             )
-            return result
+            if name == "research.record":
+                return result
+            if name == "research.finding":
+                rank = {"contextual": 0, "material": 1, "critical": 2}
+                require(
+                    rank[data["impact"]] >= rank[lane["impact"]],
+                    "CLAIM_IMPACT_TOO_LOW",
+                    "Claim impact must meet its lane's impact floor.",
+                )
+                assumptions = [
+                    resolve(con, "assumption", ref) for ref in data.get("assumption", [])
+                ]
+                require(
+                    all(a["assumption_status"] == "active" for a in assumptions),
+                    "CLAIM_ASSUMPTION_STALE",
+                    "Linked assumptions must be active.",
+                )
+                require(
+                    all(rank[a["impact"]] >= rank[data["impact"]] for a in assumptions),
+                    "ASSUMPTION_IMPACT_TOO_LOW",
+                    "An assumption cannot understate the impact of its dependent claim.",
+                )
+                claim = entity(
+                    con,
+                    "claim",
+                    phase_revision_id=run["current_phase_revision_id"],
+                    research_lane_id=lid,
+                    claim_kind=data["claim_kind"],
+                    claim_statement=data["claim"],
+                    impact=data["impact"],
+                    verification_method=data["verification_method"],
+                    verification_availability=data["verification_availability"],
+                    verification_rationale=data["verification_rationale"],
+                    verification_limitations=data["verification_limitations"],
+                    is_canonical=1,
+                    created_by_actor_id=actor,
+                )
+                falsification = (
+                    ensure_falsification_method(con, lid) if data["impact"] == "critical" else None
+                )
+                argument = entity(
+                    con,
+                    "argument",
+                    claim_id=claim["id"],
+                    argument_role="supports",
+                    reasoning=data["reasoning"],
+                    limitations=data["argument_limitations"],
+                    created_by_actor_id=actor,
+                )
+                for item in evidence:
+                    con.execute(
+                        "INSERT INTO argument_evidence VALUES (?,?)",
+                        (argument["id"], item["id"]),
+                    )
+                for assumption in assumptions:
+                    con.execute(
+                        "INSERT INTO assumption_claim "
+                        "(assumption_id,claim_id,dependency_reason,linked_by_actor_id) "
+                        "VALUES (?,?,?,?)",
+                        (
+                            assumption["assumption_id"],
+                            claim["id"],
+                            "Recorded finding explicitly depends on this assumption",
+                            actor,
+                        ),
+                    )
+                return {
+                    "activity": result,
+                    "artifact": artifact,
+                    "evidence": evidence,
+                    "claim": claim,
+                    "argument": argument,
+                    "falsification_method": falsification,
+                    "semantic_status": (
+                        "proposed; argument verification and claim evaluation remain explicit"
+                    ),
+                }
+            return {"activity": result, "artifact": artifact, "evidence": evidence}
         tid = target[f"research_{kind}_id"]
         disposition = data["disposition"]
         if disposition in ("searched", "completed"):

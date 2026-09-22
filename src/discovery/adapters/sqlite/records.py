@@ -24,6 +24,8 @@ ENTITIES = {
     "argument": ("argument", "ARG"),
     "source": ("source_repository", "SRC"),
     "question": ("clarification_question", "Q"),
+    "assumption": ("assumption", "AS"),
+    "respondent": ("question_respondent", "QR"),
     "need": ("research_need", "RN"),
     "lane": ("research_lane", "L"),
     "surface": ("research_surface", "S"),

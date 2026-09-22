@@ -23,6 +23,8 @@ def state_hash(con: sqlite3.Connection) -> str:
         if con.execute("PRAGMA user_version").fetchone()[0] >= 6
         else []
     )
+    if con.execute("PRAGMA user_version").fetchone()[0] >= 7:
+        tables += ["assumption_claim", "assumption_decision"]
     state = {
         table: sorted((dict(r) for r in con.execute(f"SELECT * FROM {table}")), key=canonical)
         for table in tables

@@ -8,15 +8,15 @@ request in the target repository. Isolated temporary probes and experiments may
 substantiate a recommendation without becoming delivery of the requested feature.
 Evaluation-driven changes to Discovery itself are in scope.
 
-The [scenario specifications](evaluations/scenario-specs.md) turn this purpose
+The [scenario specifications](campaigns/scenario-specs.md) turn this purpose
 into concrete inputs, expected observations, failure signals and evidence
-requirements. The [coverage ledger](evaluations/coverage-ledger.md) distinguishes
+requirements. The [coverage ledger](campaigns/coverage-ledger.md) distinguishes
 structural checks from model behavior; the
-[isolated campaign](evaluations/isolated-campaign.md) records repeat runs and
+[isolated campaign](campaigns/isolated-campaign.md) records repeat runs and
 the implementation changes they motivate. The
-[feature and recovery follow-up](evaluations/feature-and-recovery.md) extends that
+[feature and recovery follow-up](campaigns/feature-and-recovery.md) extends that
 evidence with a scoped proposal, conflicting-source recovery and independent review.
-The [Phase 4 retry](evaluations/phase4-retry.md) records the controlled experiment
+The [Phase 4 retry](campaigns/phase4-retry.md) records the controlled experiment
 handoff, a semantic finding, and repair followed by forward retraversal.
 
 ## Evaluate the process from outside

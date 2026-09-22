@@ -71,7 +71,8 @@ def upgrade_schema(con: sqlite3.Connection) -> None:
     migrations = (
         (["phase2_migration.sql"] if version == 3 else [])
         + (["completion_migration.sql"] if version in (3, 4) else [])
-        + ["canonical_defeater_migration.sql"]
+        + (["canonical_defeater_migration.sql"] if version in (3, 4, 5) else [])
+        + ["realignment_migration.sql"]
     )
     script = "\n".join(Path(__file__).with_name(m).read_text() for m in migrations)
     statement = ""

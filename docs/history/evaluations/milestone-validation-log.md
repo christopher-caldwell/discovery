@@ -126,7 +126,7 @@ this fixture or a real project rather than multiply synthetic environments.
 
 ## Assisted full synthetic traversal
 
-[Full evaluation report](full-evaluation.md): all four phases finalized after
+[Full evaluation report](synthetic-full-workflow.md): all four phases finalized after
 three evidence-driven regressions. The final exact-schema sandbox probe passed
 five asserted cases including abrupt process exits and shared-worker contention.
 Root review corrected several model-authored proof overclaims before finalization.
@@ -145,7 +145,7 @@ imports and refusal to overwrite project files. Ruff, skill/plugin validation
 and wheel/source builds passed. Installed direct/cache skill resources match.
 Version remains 0.2.0, schema 5.
 
-[The Boilerman investigation](real-project-evaluation.md) reproduced real
+[The Boilerman investigation](boilerman-first-pass.md) reproduced real
 integration failures despite 41 passing helper tests, with a separate gofmt
 rejection for diagnostic generated output. The real Discovery run has 20 valid
 audit events and stops on two genuine contract questions. This is meaningful

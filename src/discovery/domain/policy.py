@@ -1,6 +1,6 @@
 POLICY = {
     "policy_version": "discovery-v1",
-    "schema_version": 6,
+    "schema_version": 7,
     "source_excluded_directories": [
         ".git",
         ".discovery",
@@ -21,8 +21,9 @@ POLICY = {
         "human_authority",
     ],
     "closure_methods_by_impact": {
-        impact: ["terminology", "snowballing", "contradiction", "evidence_gaps"]
-        for impact in ("contextual", "material", "critical")
+        "contextual": ["evidence_gaps"],
+        "material": ["contradiction", "evidence_gaps"],
+        "critical": ["terminology", "snowballing", "contradiction", "evidence_gaps"],
     },
     "evidence_profiles": {
         "contextual": ["provenance"],
@@ -38,7 +39,6 @@ POLICY = {
             "semantic_verification",
             "contradiction_search",
             "falsification",
-            "empirical_verification",
         ],
     },
     "subagent_mode": "disabled",
@@ -59,5 +59,5 @@ POLICY = {
         "evidence_freshness",
     ],
     "assurance_scoring_model": "structural-coverage-v1",
-    "experiment_safety_policy": "disposable-sandbox-only",
+    "experiment_safety_policy": "disposable-local-default; restricted-when-requested",
 }

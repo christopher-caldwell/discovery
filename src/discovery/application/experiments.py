@@ -106,6 +106,15 @@ def write(con: sqlite3.Connection, actor: int, name: str, data: dict, root: Path
                 "EXPERIMENT_FAILED",
                 "Nonzero process result cannot pass.",
             )
+            artifact = con.execute(
+                "SELECT * FROM artifact WHERE artifact_id=?", (e["execution_artifact_id"],)
+            ).fetchone()
+            receipt = json.loads((root / artifact["storage_path"]).read_text())
+            require(
+                receipt.get("included_source_snapshot_unchanged_after_execution", True),
+                "SOURCE_DRIFT",
+                "The included source snapshot changed during experiment execution.",
+            )
         con.execute(
             (
                 "UPDATE experiment SET "
@@ -150,6 +159,8 @@ def execute(
         "Command requires a JSON string array with a nonempty executable and no NUL bytes.",
     )
     require(1 <= data["timeout"] <= 600, "INVALID_ARGUMENT", "Timeout must be 1–600 seconds.")
+    if data.get("execution_mode") == "trusted-local":
+        data["execution_mode"] = "local"
     data = {**data, "command": argv}
     store = CommandStore(root)
 
@@ -175,11 +186,20 @@ def execute(
         require(
             source and not source["observed_drift"], "SOURCE_DRIFT", "Experiment baseline is stale."
         )
+        if data.get("execution_mode", "local") == "local":
+            original_root = str(Path(source["repository_root"]).resolve())
+            require(
+                not any(original_root in argument for argument in argv),
+                "UNSAFE_EXPERIMENT_COMMAND",
+                "Local experiment arguments must not reference the original source path; "
+                "use paths inside the disposable working directory.",
+            )
         path = root / "scratch" / "experiments" / e["experiment_uuid"] / "source"
         con.execute(
             (
                 "UPDATE experiment SET "
-                "experiment_status='running',execution_uuid=?,sandbox_path=?,command_json=?,dt_modified=?"
+                "experiment_status='running',execution_uuid=?,sandbox_path=?,command_json=?,"
+                "sandbox_kind='command',dt_modified=?"
                 " WHERE experiment_id=?"
             ),
             (request, str(path), canonical(argv), now(), e["experiment_id"]),
@@ -216,7 +236,35 @@ def execute(
             "SOURCE_DRIFT",
             "Source changed during sandbox creation; abort and replace experiment.",
         )
-        record = (process_runner or run_process)(box, argv, data["timeout"])
+        mode = data.get("execution_mode", "local")
+        if process_runner:
+            record = process_runner(box, argv, data["timeout"])
+        elif mode == "local":
+            # Preserve the three-argument adapter seam for focused test adapters.
+            record = run_process(box, argv, data["timeout"])
+        else:
+            record = run_process(
+                box,
+                argv,
+                data["timeout"],
+                mode=mode,
+            )
+        original_after = baseline(source, root, set(result["excluded"]))
+        record["included_source_snapshot_unchanged_after_execution"] = all(
+            original_after[k] == result["source"][k]
+            for k in ("baseline_revision", "baseline_tree_hash")
+        )
+        record["original_source_after"] = original_after
+        record["source_snapshot_scope"] = {
+            "excluded_top_level_paths": result["excluded"],
+            "limitation": (
+                "A post-run comparison cannot detect changes that were restored before capture."
+            ),
+        }
+        if not record["included_source_snapshot_unchanged_after_execution"]:
+            record.setdefault("safety_limitations", []).append(
+                "The included source snapshot changed during execution"
+            )
         # The process cannot write this receipt: it is outside its permitted copy.
         record["source"] = result["source"]
         metadata = capture(root, canonical(record).encode())
